@@ -11,15 +11,17 @@ class Reach(Task):
         sim,
         get_ee_position,
         reward_type="sparse",
-        distance_threshold=0.05,# meters
+        distance_threshold=0.02,# meters
         goal_range=0.3,
     ) -> None:
         super().__init__(sim)
         self.reward_type = reward_type
         self.distance_threshold = distance_threshold
         self.get_ee_position = get_ee_position
-        self.goal_range_low = np.array([-goal_range / 2, -goal_range / 2, 0])
+
+        self.goal_range_low = np.array([-goal_range / 2, -goal_range / 2, 0.15])
         self.goal_range_high = np.array([goal_range / 2, goal_range / 2, goal_range - 0.05])
+
         with self.sim.no_rendering():
             self._create_scene()
             self.sim.place_visualizer(target_position=np.zeros(3), distance=0.9, yaw=45, pitch=-30)
@@ -37,13 +39,13 @@ class Reach(Task):
         )
 
         # add some obsticles
-        # self.sim.create_box(
-        #     body_name="screen",
-        #     half_extents=np.array([0.01, 0.55, 0.125]),
-        #     mass=0.0,
-        #     position=np.array([-0.125, 0.0, 0.15]),
-        #     rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
-        # )
+        self.sim.create_box(
+            body_name="screen",
+            half_extents=np.array([0.01, 0.2, 0.1]),
+            mass=0.0,
+            position=np.zeros(3),
+            rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
+        )
 
     def get_obs(self) -> np.ndarray:
         return np.array([])  # no task-specific observation
@@ -54,6 +56,12 @@ class Reach(Task):
 
     def reset(self) -> None:
         self.goal = self._sample_goal()
+
+        # add a screen obstacle between the robot and the goal
+        self.screen_goal = self._sample_goal()
+        self.sim.set_base_pose("screen", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
+
+        self.goal[0] += 0.10 # generate goal behind the screen
         self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
 
     def _sample_goal(self) -> np.ndarray:
@@ -68,6 +76,7 @@ class Reach(Task):
     def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> Union[np.ndarray, float]:
         # penalty for ee distance to taget
         d = distance(achieved_goal, desired_goal)
+
         if self.reward_type == "sparse":
             target_penalty = -np.array(d > self.distance_threshold, dtype=np.float64)
         else: # dense reward shaping

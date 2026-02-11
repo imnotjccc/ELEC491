@@ -1,0 +1,675 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="Franka_Research_3_v2">
+  <link
+    name="franka_robot">
+    <inertial>
+      <origin
+        xyz="-0.0257215075963844 -0.000140726343923872 0.0583238301229975"
+        rpy="0 0 0" />
+      <mass
+        value="2.53458537093423" />
+      <inertia
+        ixx="0.00669301731863591"
+        ixy="-1.22000775551122E-05"
+        ixz="-0.00112343988960679"
+        iyy="0.00948254598749087"
+        iyz="-3.09365040647767E-06"
+        izz="0.00886795022977279" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/franka_robot.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/franka_robot.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="Link_Shoulder_01">
+    <inertial>
+      <origin
+        xyz="-0.00213456226793228 -0.034551608748078 -0.0672460472161224"
+        rpy="0 0 0" />
+      <mass
+        value="2.41043967630229" />
+      <inertia
+        ixx="0.0156403919190568"
+        ixy="-0.000124926150924449"
+        ixz="0.000251312691144325"
+        iyy="0.0136252179718"
+        iyz="0.00407058837657766"
+        izz="0.00564872640101832" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Shoulder_01.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Shoulder_01.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_Shoulder_01"
+    type="revolute">
+    <origin
+      xyz="3.06592108877928E-05 0.000499059153678049 0.333026749986188"
+      rpy="0 0 0" />
+    <parent
+      link="franka_robot" />
+    <child
+      link="Link_Shoulder_01" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.7437"
+      upper="2.7437"
+      effort="87"
+      velocity="2.62" />
+  </joint>
+  <link
+    name="Link_Shoulder_02">
+    <inertial>
+      <origin
+        xyz="-7.76978644131825E-07 -0.0671934024602159 0.0336172930461478"
+        rpy="0 0 0" />
+      <mass
+        value="2.41042875187917" />
+      <inertia
+        ixx="0.0156480403431639"
+        ixy="5.93588832007721E-08"
+        ixz="2.00794547013372E-08"
+        iyy="0.0056485167121666"
+        iyz="-0.00407825103259544"
+        izz="0.01361751833654" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Shoulder_02.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Shoulder_02.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_Shoulder_02"
+    type="revolute">
+    <origin
+      xyz="0 0 0"
+      rpy="-1.5707963267949 0 -0.0616799645376402" />
+    <parent
+      link="Link_Shoulder_01" />
+    <child
+      link="Link_Shoulder_02" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-1.7628"
+      upper="1.7628"
+      effort="87"
+      velocity="2.175" />
+  </joint>
+  <link
+    name="Link_Elbow_01">
+    <inertial>
+      <origin
+        xyz="0.0430617745811152 0.0215720194524131 -0.0376665077690033"
+        rpy="0 0 0" />
+      <mass
+        value="1.86279072124258" />
+      <inertia
+        ixx="0.00627677607553943"
+        ixy="-0.00168412788952977"
+        ixz="-0.00281221883685812"
+        iyy="0.00826459154945619"
+        iyz="-0.00148555411729514"
+        izz="0.0067854028208688" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Elbow_01.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Elbow_01.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_Elbow_01"
+    type="revolute">
+    <origin
+      xyz="0 -0.315973250013811 -0.000499999999999836"
+      rpy="1.5707963267949 -0.0616799645376402 0" />
+    <parent
+      link="Link_Shoulder_02" />
+    <child
+      link="Link_Elbow_01" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.8773"
+      upper="2.8973"
+      effort="87"
+      velocity="2.175" />
+  </joint>
+  <link
+    name="Link_Elbow_02">
+    <inertial>
+      <origin
+        xyz="-0.0399753149075977 0.0369924602760736 0.0236477759050669"
+        rpy="0 0 0" />
+      <mass
+        value="1.86279180923057" />
+      <inertia
+        ixx="0.00648839657481814"
+        ixy="0.00271678512830317"
+        ixz="-0.00179223174709489"
+        iyy="0.00678535025205209"
+        iyz="0.001653647302724"
+        izz="0.00805305605996542" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Elbow_02.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Elbow_02.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_Elbow_02"
+    type="revolute">
+    <origin
+      xyz="0.0814658403118995 -0.00545839932838597 0.000577795911384626"
+      rpy="1.5707963267949 0 -0.0607784629425817" />
+    <parent
+      link="Link_Elbow_01" />
+    <child
+      link="Link_Elbow_02" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-3.7018"
+      upper="-0.0698"
+      effort="87"
+      velocity="2.175" />
+  </joint>
+  <link
+    name="Link_LowerArm">
+    <inertial>
+      <origin
+        xyz="0.00269121920375588 0.0442070697587743 0.144377235739644"
+        rpy="0 0 0" />
+      <mass
+        value="1.83354626284484" />
+      <inertia
+        ixx="0.0226301419731429"
+        ixy="-0.000134904717080184"
+        ixz="-0.000313065737744122"
+        iyy="0.020420965739829"
+        iyz="-0.00514202280981198"
+        izz="0.00424876212898234" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_LowerArm.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_LowerArm.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_LowerArm"
+    type="revolute">
+    <origin
+      xyz="-0.081647 0.12333 -0.0005"
+      rpy="-1.5708 0.060778 0" />
+    <parent
+      link="Link_Elbow_02" />
+    <child
+      link="Link_LowerArm" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.8973"
+      upper="2.8973"
+      effort="12"
+      velocity="2.61" />
+  </joint>
+  <link
+    name="Link_Wrist">
+    <inertial>
+      <origin
+        xyz="0.0530701887914911 0.00783478752948952 0.0233041901801408"
+        rpy="0 0 0" />
+      <mass
+        value="1.25259326567008" />
+      <inertia
+        ixx="0.00185484822788914"
+        ixy="-0.000202844101010342"
+        ixz="0.00034775689350562"
+        iyy="0.00322316181137426"
+        iyz="5.05843935796239E-05"
+        izz="0.00387305644623726" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Wrist.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.250980392156863 0.250980392156863 0.250980392156863 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Wrist.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_Wrist"
+    type="revolute">
+    <origin
+      xyz="0.00099621396697373 0.0163707165002706 0.259999999999999"
+      rpy="1.5707963267949 0 -0.0607784629426199" />
+    <parent
+      link="Link_LowerArm" />
+    <child
+      link="Link_Wrist" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-0.0175"
+      upper="3.7525"
+      effort="12"
+      velocity="2.61" />
+  </joint>
+  <link
+    name="Link_Flange">
+    <inertial>
+      <origin
+        xyz="0.00875564624725481 0.00973370624018816 0.0770180925982042"
+        rpy="0 0 0" />
+      <mass
+        value="0.389527474650977" />
+      <inertia
+        ixx="0.000241895063873003"
+        ixy="8.629753878676E-06"
+        ixz="-3.23695561897715E-06"
+        iyy="0.000245054907487076"
+        iyz="-2.31057870248988E-06"
+        izz="0.000344781186987904" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Flange.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.666666666666667 0.698039215686274 0.768627450980392 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Flange.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_Flange"
+    type="revolute">
+    <origin
+      xyz="0.0880000000002042 0 0.0164009999999996"
+      rpy="1.57023251536482 0.0607785807758702 0.000207070956475231" />
+    <parent
+      link="Link_Wrist" />
+    <child
+      link="Link_Flange" />
+    <axis
+      xyz="-0.000206688608965628 -0.000576389117777791 0.999999812527684" />
+    <limit
+      lower="-2.8973"
+      upper="2.8973"
+      effort="12"
+      velocity="2.61" />
+  </joint>
+  <link
+    name="Link_Franka_Hand">
+    <inertial>
+      <origin
+        xyz="5.5588571822085E-05 3.05097672357937E-05 0.133857133044191"
+        rpy="0 0 0" />
+      <mass
+        value="0.387415632872849" />
+      <inertia
+        ixx="0.000814429690164796"
+        ixy="-0.000561966918697256"
+        ixz="-1.06591272506502E-06"
+        iyy="0.000677405014202969"
+        iyz="-9.82493033357866E-07"
+        izz="0.00122386134841469" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Franka_Hand.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Franka_Hand.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_Franka_Hand"
+    type="continuous">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="Link_Flange" />
+    <child
+      link="Link_Franka_Hand" />
+    <axis
+      xyz="-0.000206688608965628 -0.000576389117777791 0.999999812527684" />
+  </joint>
+  <link
+    name="Link_Fingure_Left">
+    <inertial>
+      <origin
+        xyz="2.28843882038587E-09 0.022790700376514 0.000411043909188502"
+        rpy="0 0 0" />
+      <mass
+        value="0.0111449902979934" />
+      <inertia
+        ixx="3.45731556182926E-06"
+        ixy="-4.36186685075585E-12"
+        ixz="-6.69397681903771E-13"
+        iyy="8.2600759496805E-07"
+        iyz="-6.68075927566345E-07"
+        izz="3.34830799012147E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Fingure_Left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Fingure_Left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_Fingure_Left"
+    type="prismatic">
+    <origin
+      xyz="0.036257 0.040898 0.16563"
+      rpy="1.5714 0.00022731 -0.72463" />
+    <parent
+      link="Link_Franka_Hand" />
+    <child
+      link="Link_Fingure_Left" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="-0.03925"
+      upper="0"
+      effort="70"
+      velocity="0.05" />
+  </joint>
+  <link
+    name="Link_Fingure_Right">
+    <inertial>
+      <origin
+        xyz="-2.2891900319788E-09 -0.0227907003764137 0.000411043907521867"
+        rpy="0 0 0" />
+      <mass
+        value="0.0111449902979933" />
+      <inertia
+        ixx="3.45731556182919E-06"
+        ixy="-4.36186838491798E-12"
+        ixz="6.69398066252169E-13"
+        iyy="8.26007594968853E-07"
+        iyz="6.68075927567864E-07"
+        izz="3.3483079901206E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Fingure_Right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Link_Fingure_Right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_Fingure_Right"
+    type="prismatic">
+    <origin
+      xyz="-0.036326 -0.04109 0.16557"
+      rpy="-1.5702 0.00022731 -0.72463" />
+    <parent
+      link="Link_Franka_Hand" />
+    <child
+      link="Link_Fingure_Right" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0.03925"
+      effort="70"
+      velocity="0.05" />
+  </joint>
+  <link
+    name="Linke_case_link6">
+    <inertial>
+      <origin
+        xyz="0.0329198076562982 0.00335174953519579 -0.0464803910079026"
+        rpy="0 0 0" />
+      <mass
+        value="1.76563334262464" />
+      <inertia
+        ixx="0.00296968819779444"
+        ixy="-0.000180017586275914"
+        ixz="0.000309100156827901"
+        iyy="0.00413541874169722"
+        iyz="4.95975871867181E-05"
+        izz="0.00532687510143534" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Linke_case_link6.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://Franka_Research_3_v2/meshes/Linke_case_link6.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint_case_link6"
+    type="fixed">
+    <origin
+      xyz="0.0194999999978656 0.00305 0.075862974422799"
+      rpy="0 0 0" />
+    <parent
+      link="Link_Wrist" />
+    <child
+      link="Linke_case_link6" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+</robot>

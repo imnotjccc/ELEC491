@@ -329,24 +329,19 @@ class RobotTaskEnv(GoalEnv):
             "joint_velocities": joint_velocities,
             "ee_velocity": ee_velocity,
         }
-
-        # done = bool(info["is_success"]) # check if task is done based on success
-
-        # target joint velocity
-        # target_joint_velocity = 0.1 # rad/s
-        #target ee velocity
-        # target_ee_velocity = 0.005 # m/s
-
-        # joint_velocity_penalty = -np.sum((joint_velocities - target_joint_velocity) ** 2) # L2 norm penalty
+        # compute additional reward components
         joint_velocity_penalty = -np.sum(joint_velocities**2)
         # ee_velocity_penalty  = -np.sum((ee_velocity - target_ee_velocity) ** 2) # L2 norm penalty
 
+        # get distance between achieved goal and desired goal
+        d = distance(obs["achieved_goal"], self.task.get_goal())
+
         # weights for reward components
         w_ee_distance = 1.0
-        w_joint_velocity = 5.0
+        w_joint_velocity = 0.0
         # w_ee_velocity = 100.0
 
-        # calculate penalty for distance to goal
+        # calculate total reward/penalty
         reward = self.task.compute_reward(obs["achieved_goal"], self.task.get_goal(), info) * w_ee_distance \
                 + joint_velocity_penalty * w_joint_velocity
         

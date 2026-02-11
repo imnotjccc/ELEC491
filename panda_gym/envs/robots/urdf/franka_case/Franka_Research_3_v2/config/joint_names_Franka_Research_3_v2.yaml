@@ -1,0 +1,1 @@
+controller_joint_names: ['', 'Joint_Shoulder_01', 'Joint_Shoulder_02', 'Joint_Elbow_01', 'Joint_Elbow_02', 'Joint_LowerArm', 'Joint_Wrist', 'Joint_Flange', 'Joint_Franka_Hand', 'Joint_Fingure_Left', 'Joint_Fingure_Right', ]
