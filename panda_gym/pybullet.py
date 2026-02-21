@@ -368,6 +368,7 @@ class PyBullet:
         """
         self._bodies_idx[body_name] = self.physics_client.loadURDF(**kwargs)
 
+
     def create_box(
         self,
         body_name: str,

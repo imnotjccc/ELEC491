@@ -4,6 +4,7 @@ from gym import spaces
 from panda_gym.envs.core import PyBulletRobot
 from panda_gym.pybullet import PyBullet
 
+import tacto
 
 class Panda(PyBulletRobot):
     """Panda robot in PyBullet.
@@ -22,22 +23,29 @@ class Panda(PyBulletRobot):
         block_gripper: bool = False,
         base_position: np.ndarray = np.array([0.0, 0.0, 0.0]),
         control_type: str = "ee",
+        have_tacto_sensor: bool = False,
     ) -> None:
         self.block_gripper = block_gripper
         self.control_type = control_type
         n_action = 3 if self.control_type == "ee" else 7  # control (x, y z) if "ee", else, control the 7 joints
         n_action += 0 if self.block_gripper else 1
         action_space = spaces.Box(-1.0, 1.0, shape=(n_action,), dtype=np.float32)
+        self.have_tacto_sensor = have_tacto_sensor
+        if self.have_tacto_sensor:
+            urdf_file = "panda_gym/envs/robots/franka_panda/panda.urdf"
+        else:
+            urdf_file = "franka_panda/panda.urdf"
         super().__init__(
             sim,
             body_name="panda",
-            file_name="franka_panda/panda.urdf",
+            file_name=urdf_file,
             base_position=base_position,
             action_space=action_space,
             joint_indices=np.array([0, 1, 2, 3, 4, 5, 6, 9, 10]),
             arm_indices=np.array([4, 5, 6]), # define arm indices besides finger joints
             ee_index = np.array([11]), # define end-effector link index
             joint_forces=np.array([87.0, 87.0, 87.0, 87.0, 12.0, 120.0, 120.0, 170.0, 170.0]),
+            have_tacto_sensor=self.have_tacto_sensor
         )
 
         self.fingers_indices = np.array([9, 10])
@@ -47,6 +55,24 @@ class Panda(PyBulletRobot):
         self.sim.set_lateral_friction(self.body_name, self.fingers_indices[1], lateral_friction=1.0)
         self.sim.set_spinning_friction(self.body_name, self.fingers_indices[0], spinning_friction=0.001)
         self.sim.set_spinning_friction(self.body_name, self.fingers_indices[1], spinning_friction=0.001)
+
+        # init tacto sensor
+        # if have_tacto_sensor:
+        #     with self.sim.no_rendering():
+        #         self.digit_id_1 = self.sim.load_urdf("tactile_sensor/meshes/digit.urdf", basePosition=[0, 0, 0], useFixedBase=True)
+        #         self.object_id_1 = self.sim.load_urdf("tactile_sensor/objects/cube_small.urdf", basePosition=[-0.015, 0, 0.04], globalScaling=0.15)
+        #         self.tacto_sensor_1 = tacto.Sensor(
+        #                                             width=120,
+        #                                             height=160,
+        #                                             background=None,
+        #                                             #config_path=get_digit_config_path(), default config is for digit
+        #                                             visualize_gui=True,
+        #                                             show_depth=True,
+        #                                             zrange=0.002,
+        #                                             cid=0
+        #                                         )
+        #         self.tacto_sensor_1.add_camera(self.digit_id_1, [0])
+        #         self.tacto_sensor_1.add_body("tactile_sensor/objects/cube_small.urdf", self.object_id_1, globalScaling=0.15) # add robot arm to tacto sensor
 
     def set_action(self, action: np.ndarray) -> None:
         action = action.copy()  # ensure action don't change

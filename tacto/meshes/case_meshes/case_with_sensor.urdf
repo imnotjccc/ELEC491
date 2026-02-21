@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="case_with_sensor">
+  <link
+    name="case_link">
+    <inertial>
+      <origin
+        xyz="-0.035580096770691 -0.0129825715468967 0.0648517725125432"
+        rpy="0 0 0" />
+      <mass
+        value="1.76563640233398" />
+      <inertia
+        ixx="0.00296969539073717"
+        ixy="-0.000309096243245619"
+        ixz="-0.000180022985377289"
+        iyy="0.00532688379636087"
+        iyz="-4.95956545811363E-05"
+        izz="0.00413542327155056" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://case_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://case_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="PCB_Link">
+    <inertial>
+      <origin
+        xyz="-0.00627061852167102 -0.0253507209701147 0.0614999999999989"
+        rpy="0 0 0" />
+      <mass
+        value="0.00402484825265058" />
+      <inertia
+        ixx="1.2954925370893E-05"
+        ixy="-6.34943834564846E-06"
+        ixz="5.74964985132002E-20"
+        iyy="1.97477304170568E-05"
+        iyz="9.61853442552051E-20"
+        izz="2.25540009188918E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://PCB_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://PCB_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="case_PCB_joint"
+    type="fixed">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="case_link" />
+    <child
+      link="PCB_Link" />
+    <axis
+      xyz="0 0 0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+  </joint>
+</robot>

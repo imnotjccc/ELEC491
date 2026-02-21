@@ -8,6 +8,13 @@ import numpy as np
 
 from panda_gym.pybullet import PyBullet
 
+import pybullet as p
+
+# Compatibility: some gym versions expose GoalEnv as gym.GoalEnv, others don't.
+# Fall back to plain gym.Env when GoalEnv is not available so this package works
+# across different gym/gymnasium releases.
+GoalEnv = getattr(gym, "GoalEnv", gym.Env)
+
 
 class PyBulletRobot(ABC):
     """Base class for robot env.
@@ -30,6 +37,7 @@ class PyBulletRobot(ABC):
         arm_indices: np.ndarray, # define arm indices besides finger joints
         ee_index: np.ndarray,
         joint_forces: np.ndarray,
+        have_tacto_sensor: bool = False,
     ) -> None:
         self.sim = sim
         self.body_name = body_name
@@ -49,7 +57,6 @@ class PyBulletRobot(ABC):
 
     def _load_robot(self, file_name: str, base_position: np.ndarray) -> None:
         """Load the robot.
-
         Args:
             file_name (str): The URDF file name of the robot.
             base_position (np.ndarray): The position of the robot, as (x, y, z).
@@ -60,6 +67,23 @@ class PyBulletRobot(ABC):
             basePosition=base_position,
             useFixedBase=True,
         )
+
+        robot = p.loadURDF(
+            fileName=file_name,
+            basePosition=base_position,
+            useFixedBase=True,
+        )
+        print("-----URDF INFO-----")
+        print("base link name:", p.getBodyInfo(robot)[0].decode("utf-8"))  # base 的名字
+        n = p.getNumJoints(robot)
+        for i in range(n):
+            ji = p.getJointInfo(robot, i)
+            joint_name = ji[1].decode("utf-8")
+            link_name  = ji[12].decode("utf-8")   # 这个字段是 child link name
+            parent     = ji[16]                   # parent link index
+            joint_type = ji[2]
+            print(f"linkIndex={i:2d} link={link_name:20s}  joint={joint_name:20s}  parent={parent} type={joint_type}")
+        p.removeBody(robot)
 
     def setup(self) -> None:
         """Called after robot loading."""
@@ -221,7 +245,7 @@ class Task(ABC):
     ) -> Union[np.ndarray, float]:
         """Compute reward associated to the achieved and the desired goal."""
 
-class RobotTaskEnv(gym.GoalEnv):
+class RobotTaskEnv(GoalEnv):
     """Robotic task goal env, as the junction of a task and a robot.
 
     Args:
@@ -284,6 +308,8 @@ class RobotTaskEnv(gym.GoalEnv):
 
         # self.robot.set_action(action)
         self.sim.step()
+
+        
 
         # get robot joint velocities
         joint_velocities = []
