@@ -83,3 +83,7 @@ Cite as
 
 Environments are widely inspired from [OpenAI Fetch environments](https://openai.com/blog/ingredients-for-robotics-research/). 
 >>>>>>> 1dbe72e (initial commit)
+
+## Problems
+1. ImportError: cannot import name 'Mapping' from 'collections'
+Solution: pip install -U "networkx>=2.8"1
