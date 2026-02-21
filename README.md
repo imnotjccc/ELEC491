@@ -86,4 +86,6 @@ Environments are widely inspired from [OpenAI Fetch environments](https://openai
 
 ## Problems
 1. ImportError: cannot import name 'Mapping' from 'collections'
-Solution: pip install -U "networkx>=2.8"1
+```python
+pip install -U "networkx>=2.8"1
+```
