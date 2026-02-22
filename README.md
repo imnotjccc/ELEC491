@@ -84,10 +84,21 @@ Cite as
       archivePrefix={arXiv},
       primaryClass={cs.LG}
 }
+@Article{Wang2022TACTO,
+  author   = {Wang, Shaoxiong and Lambeta, Mike and Chou, Po-Wei and Calandra, Roberto},
+  title    = {{TACTO}: A Fast, Flexible, and Open-source Simulator for High-resolution Vision-based Tactile Sensors},
+  journal  = {IEEE Robotics and Automation Letters (RA-L)},
+  year     = {2022},
+  volume   = {7},
+  number   = {2},
+  pages    = {3930--3937},
+  issn     = {2377-3766},
+  doi      = {10.1109/LRA.2022.3146945},
+  url      = {https://arxiv.org/abs/2012.08456},
+}
 ```
 
 Environments are widely inspired from [OpenAI Fetch environments](https://openai.com/blog/ingredients-for-robotics-research/). 
->>>>>>> 1dbe72e (initial commit)
 
 ## Problems
 1. ImportError: cannot import name 'Mapping' from 'collections'
