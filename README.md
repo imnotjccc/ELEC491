@@ -48,6 +48,11 @@ while not done:
 
 env.close()
 ```
+Install the customized Tacto library. Go to the tacto folder and use pip to install the library.
+```python
+pip install -e.
+```
+
 
 You can also [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/qgallouedec/panda-gym/blob/master/examples/PickAndPlace.ipynb)
 
