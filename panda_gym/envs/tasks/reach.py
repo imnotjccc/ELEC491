@@ -11,7 +11,7 @@ class Reach(Task):
         sim,
         get_ee_position,
         reward_type="sparse",
-        distance_threshold=0.02,# meters
+        distance_threshold=0.015,# meters
         goal_range=0.3,
     ) -> None:
         super().__init__(sim)
@@ -39,6 +39,7 @@ class Reach(Task):
         )
 
         # add some obsticles
+        # add a screen
         self.sim.create_box(
             body_name="screen",
             half_extents=np.array([0.01, 0.2, 0.1]),
@@ -46,6 +47,17 @@ class Reach(Task):
             position=np.zeros(3),
             rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
         )
+
+        # add a cylinder
+        # self.sim.create_cylinder(
+        #     body_name="cylinder1",
+        #     radius=0.05,
+        #     height=0.2,
+        #     mass=0.0,
+        #     # position=np.array([0.05, 0.05, 0.1]),
+        #     position=np.zeros(3),
+        #     rgba_color=np.array([0.9, 0.1, 0.1, 0.5]),
+        # )
 
     def get_obs(self) -> np.ndarray:
         return np.array([])  # no task-specific observation
@@ -68,6 +80,14 @@ class Reach(Task):
         """Randomize goal."""
         goal = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
         return goal
+    
+    # def _sample_obstacle_env(self) -> np.ndarray:
+    #     """Randomize obstacle position."""
+    #     obstacle_range = 0.3
+    #     obstacle_range_low = np.array([-obstacle_range / 2, -obstacle_range / 2, 0.15])
+    #     obstacle_range_high = np.array([obstacle_range / 2, obstacle_range / 2, obstacle_range - 0.05])
+    #     obstacle_position = self.np_random.uniform(obstacle_range_low, obstacle_range_high)
+    #     return obstacle_position
 
     def is_success(self, achieved_goal: np.ndarray, desired_goal: np.ndarray) -> Union[np.ndarray, float]:
         d = distance(achieved_goal, desired_goal)
