@@ -31,7 +31,8 @@ class Panda(PyBulletRobot):
         super().__init__(
             sim,
             body_name="panda",
-            file_name="franka_panda/panda.urdf",
+            # file_name="franka_panda/panda.urdf",
+            file_name="panda_gym/envs/robots/franka_panda/panda.urdf",
             # file_name="./urdf/franka_case/urdf/Franka_Research_3_v2.urdf",
             base_position=base_position,
             action_space=action_space,
