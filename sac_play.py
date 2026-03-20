@@ -5,7 +5,10 @@ from stable_baselines3 import DDPG, TD3, SAC, HerReplayBuffer
 env = gym.make("PandaReach-v2", render=True)
 # model = DDPG.load('ddpg_panda_reach_v2', env=env)
 # model = TD3.load('td3_panda_reach_v2', env=env)
-model = SAC.load('sac_panda_reach_v2_5cm_0.1_dense_screen', env=env)
+
+# model = SAC.load('sac_panda_reach_v2_2cm_case', env=env)
+# model = SAC.load('sac_panda_reach_v2_5cm_0.1_dense_screen', env=env) #best so far
+model = SAC.load('avoid_test', env=env) # use for testing
 
 obs = env.reset()
 for i in range(1000):

@@ -11,13 +11,15 @@ class Reach(Task):
         sim,
         get_ee_position,
         reward_type="sparse",
-        distance_threshold=0.015,# meters
+        distance_threshold=0.03,# meters
         goal_range=0.3,
+        contact_flag=0,
     ) -> None:
         super().__init__(sim)
         self.reward_type = reward_type
         self.distance_threshold = distance_threshold
         self.get_ee_position = get_ee_position
+        self.contact_flag = contact_flag
 
         self.goal_range_low = np.array([-goal_range / 2, -goal_range / 2, 0.15])
         self.goal_range_high = np.array([goal_range / 2, goal_range / 2, goal_range - 0.05])
@@ -29,6 +31,7 @@ class Reach(Task):
     def _create_scene(self) -> None:
         self.sim.create_plane(z_offset=-0.4)
         self.sim.create_table(length=1.1, width=0.7, height=0.4, x_offset=-0.3)
+        #original goal position (green)
         self.sim.create_sphere(
             body_name="target",
             radius=0.02,
@@ -40,24 +43,23 @@ class Reach(Task):
 
         # add some obsticles
         # add a screen
-        self.sim.create_box(
-            body_name="screen",
-            half_extents=np.array([0.01, 0.2, 0.1]),
-            mass=0.0,
-            position=np.zeros(3),
-            rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
-        )
-
-        # add a cylinder
-        # self.sim.create_cylinder(
-        #     body_name="cylinder1",
-        #     radius=0.05,
-        #     height=0.2,
+        # self.sim.create_box(
+        #     body_name="screen",
+        #     half_extents=np.array([0.01, 0.2, 0.1]),
         #     mass=0.0,
-        #     # position=np.array([0.05, 0.05, 0.1]),
         #     position=np.zeros(3),
-        #     rgba_color=np.array([0.9, 0.1, 0.1, 0.5]),
+        #     rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
         # )
+
+        #new goal poaition (red)
+        self.sim.create_sphere(
+            body_name="target_2",
+            radius=0.02,
+            mass=0.0,
+            ghost=True,
+            position=np.zeros(3),
+            rgba_color=np.array([0.9, 0.1, 0.1, 0.4]),
+        )
 
     def get_obs(self) -> np.ndarray:
         return np.array([])  # no task-specific observation
@@ -68,26 +70,33 @@ class Reach(Task):
 
     def reset(self) -> None:
         self.goal = self._sample_goal()
-
+        # if self.contact_flag == 0:
         # add a screen obstacle between the robot and the goal
-        self.screen_goal = self._sample_goal()
-        self.sim.set_base_pose("screen", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
+        # self.screen_goal = self._sample_goal()
+        # self.sim.set_base_pose("screen", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
 
+        # self.goal[0] -= 0.10 # generate goal in front of the screen
+        self.goal[0] -= 0.10
+        self.sim.set_base_pose("target_2", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
+        self.red_goal = self.goal.copy() # store the red goal position
         self.goal[0] += 0.10 # generate goal behind the screen
-        self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
+        self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0])) # make target the new goal
+        # else:
+        #     self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
+        #     self.green_goal = self.goal.copy() # store the green goal position
+        #     self.goal[0] -= 0.10 # generate goal in front of the screen
+        #     self.sim.set_base_pose("target_2", self.goal, np.array([0.0, 0.0, 0.0, 1.0])) # make target2 the new goal
 
     def _sample_goal(self) -> np.ndarray:
         """Randomize goal."""
         goal = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
         return goal
     
-    # def _sample_obstacle_env(self) -> np.ndarray:
-    #     """Randomize obstacle position."""
-    #     obstacle_range = 0.3
-    #     obstacle_range_low = np.array([-obstacle_range / 2, -obstacle_range / 2, 0.15])
-    #     obstacle_range_high = np.array([obstacle_range / 2, obstacle_range / 2, obstacle_range - 0.05])
-    #     obstacle_position = self.np_random.uniform(obstacle_range_low, obstacle_range_high)
-    #     return obstacle_position
+    # def _sample_second_goal(self) -> np.ndarray:
+    #     """Randomize second goal."""
+    #     goal = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
+    #     goal[0] += 0.10 # generate goal behind the screen
+    #     return goal
 
     def is_success(self, achieved_goal: np.ndarray, desired_goal: np.ndarray) -> Union[np.ndarray, float]:
         d = distance(achieved_goal, desired_goal)
