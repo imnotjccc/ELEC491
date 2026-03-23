@@ -267,11 +267,28 @@ class RobotTaskEnv(gym.GoalEnv):
         task_obs = self.task.get_obs()  # object position, velococity, etc...
         observation = np.concatenate([robot_obs, task_obs])
         achieved_goal = self.task.get_achieved_goal()
+        original_goal = self.task.get_goal()
+        red_goal = original_goal.copy()
+        red_goal[0] -= 0.10 # generate red goal in front of the
         return {
             "observation": observation,
             "achieved_goal": achieved_goal,
-            "desired_goal": self.task.red_goal, # change: use red goal for reward computation
+            # "desired_goal": self.task.red_goal, # change: use red goal for reward computation
+            "desired_goal": red_goal,
         }
+    
+    # def _get_obs_test_goal(self) -> Dict[str, np.ndarray]:
+    #     robot_obs = self.robot.get_obs()  # robot state
+    #     task_obs = self.task.get_obs()  # object position, velococity, etc...
+    #     observation = np.concatenate([robot_obs, task_obs])
+    #     achieved_goal = self.task.get_achieved_goal()
+    #     test_goal = achieved_goal.copy() # initialize test goal as current achieved goal
+    #     test_goal[0] -= 0.10 # generate test goal in front of the
+    #     return {
+    #         "observation": observation,
+    #         "achieved_goal": achieved_goal,
+    #         "desired_goal": test_goal, # change: use test goal for reward computation
+    #     }
 
     def reset(self) -> Dict[str, np.ndarray]:
         with self.sim.no_rendering():
@@ -327,10 +344,12 @@ class RobotTaskEnv(gym.GoalEnv):
             self.task.contact_flag = 1
             obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
             # print(1)
+            # print(obs["desired_goal"])
         elif self.task.contact_flag == 1 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
             self.task.contact_flag = 0
             obs = self._get_obs() # change desired goal back to original goal when contact is made
             # print(0)
+            # print(obs["desired_goal"]) 
 
         #calculate reward based on contact flag -> switch controller
         if self.task.contact_flag == 0:
