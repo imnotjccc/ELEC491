@@ -11,7 +11,7 @@ class Reach(Task):
         sim,
         get_ee_position,
         reward_type="sparse",
-        distance_threshold=0.03,# meters
+        distance_threshold=0.01,# meters
         goal_range=0.3,
         contact_flag=0,
     ) -> None:
@@ -53,7 +53,7 @@ class Reach(Task):
 
         #new goal poaition (red)
         self.sim.create_sphere(
-            body_name="target_2",
+            body_name="red_goal",
             radius=0.02,
             mass=0.0,
             ghost=True,
@@ -70,33 +70,21 @@ class Reach(Task):
 
     def reset(self) -> None:
         self.goal = self._sample_goal()
-        # if self.contact_flag == 0:
-        # add a screen obstacle between the robot and the goal
-        # self.screen_goal = self._sample_goal()
-        # self.sim.set_base_pose("screen", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
+        self.red_goal = self._sample_red_goal()
 
-        # self.goal[0] -= 0.10 # generate goal in front of the screen
-        self.goal[0] -= 0.10
-        self.sim.set_base_pose("target_2", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
-        self.red_goal = self.goal.copy() # store the red goal position
-        self.goal[0] += 0.10 # generate goal behind the screen
+        self.sim.set_base_pose("red_goal", self.red_goal, np.array([0.0, 0.0, 0.0, 1.0]))
         self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0])) # make target the new goal
-        # else:
-        #     self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
-        #     self.green_goal = self.goal.copy() # store the green goal position
-        #     self.goal[0] -= 0.10 # generate goal in front of the screen
-        #     self.sim.set_base_pose("target_2", self.goal, np.array([0.0, 0.0, 0.0, 1.0])) # make target2 the new goal
 
     def _sample_goal(self) -> np.ndarray:
         """Randomize goal."""
         goal = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
         return goal
     
-    # def _sample_second_goal(self) -> np.ndarray:
-    #     """Randomize second goal."""
-    #     goal = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
-    #     goal[0] += 0.10 # generate goal behind the screen
-    #     return goal
+    def _sample_red_goal(self) -> np.ndarray:
+        """Randomize second goal."""
+        self.red_goal = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
+        self.red_goal[0] -= 0.10 # make sure red goal is not collide with original goal
+        return self.red_goal
 
     def is_success(self, achieved_goal: np.ndarray, desired_goal: np.ndarray) -> Union[np.ndarray, float]:
         d = distance(achieved_goal, desired_goal)

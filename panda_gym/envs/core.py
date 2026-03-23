@@ -5,9 +5,10 @@ import gym
 import gym.spaces
 import gym.utils.seeding
 import numpy as np
+from panda_gym.utils import distance
 
 from panda_gym.pybullet import PyBullet
-from panda_gym.utils import distance
+
 
 class PyBulletRobot(ABC):
     """Base class for robot env.
@@ -264,31 +265,16 @@ class RobotTaskEnv(gym.GoalEnv):
     
     def _get_obs_red_goal(self) -> Dict[str, np.ndarray]:
         robot_obs = self.robot.get_obs()  # robot state
-        task_obs = self.task.get_obs()  # object position, velococity, etc...
+        task_obs = self.task.get_obs()    # object position, velocity, etc...
         observation = np.concatenate([robot_obs, task_obs])
+
         achieved_goal = self.task.get_achieved_goal()
-        original_goal = self.task.get_goal()
-        red_goal = original_goal.copy()
-        red_goal[0] -= 0.10 # generate red goal in front of the
+
         return {
             "observation": observation,
             "achieved_goal": achieved_goal,
-            # "desired_goal": self.task.red_goal, # change: use red goal for reward computation
-            "desired_goal": red_goal,
+            "desired_goal": self.task.red_goal,
         }
-    
-    # def _get_obs_test_goal(self) -> Dict[str, np.ndarray]:
-    #     robot_obs = self.robot.get_obs()  # robot state
-    #     task_obs = self.task.get_obs()  # object position, velococity, etc...
-    #     observation = np.concatenate([robot_obs, task_obs])
-    #     achieved_goal = self.task.get_achieved_goal()
-    #     test_goal = achieved_goal.copy() # initialize test goal as current achieved goal
-    #     test_goal[0] -= 0.10 # generate test goal in front of the
-    #     return {
-    #         "observation": observation,
-    #         "achieved_goal": achieved_goal,
-    #         "desired_goal": test_goal, # change: use test goal for reward computation
-    #     }
 
     def reset(self) -> Dict[str, np.ndarray]:
         with self.sim.no_rendering():
@@ -296,7 +282,6 @@ class RobotTaskEnv(gym.GoalEnv):
             self.task.reset()
 
         # init low pass filter for actions
-        # self.filtered_action = np.zeros(self.action_space.shape, dtype=np.float32)
         if not hasattr(self, "filtered_action") or self.filtered_action is None:
             self.filtered_action = np.zeros(self.robot.action_space.shape, dtype=np.float32)
         else:
@@ -321,19 +306,19 @@ class RobotTaskEnv(gym.GoalEnv):
         #get ee velocity
         ee_velocity = []
         ee_velocity = self.robot.get_link_velocity(self.robot.ee_index[0])
-        # print('ee velocity: ', np.linalg.norm(ee_velocity))
         
         if self.task.contact_flag == 0:
             obs = self._get_obs() # obs init need to be resolved
+            # print("flag = 0")
         elif self.task.contact_flag == 1:
             obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
+            # print("flag = 1")
         # print("reset")
         done = False
 
         info = {
-            # "is_success": self.task.is_success(obs["achieved_goal"], self.task.get_goal()),
-            "is_success": self.task.is_success(obs["achieved_goal"], self.task.red_goal), # use red goal for success evaluation
-            # "joint_velocities": joint_velocities,
+            "is_success": self.task.is_success(obs["achieved_goal"], self.task.get_goal()),
+            "joint_velocities": joint_velocities,
             "ee_velocity": ee_velocity,
         }
 
@@ -343,12 +328,12 @@ class RobotTaskEnv(gym.GoalEnv):
         if self.task.contact_flag == 0 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
             self.task.contact_flag = 1
             obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
-            # print(1)
+            # print("flag switch: 0 -> 1")
             # print(obs["desired_goal"])
         elif self.task.contact_flag == 1 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
             self.task.contact_flag = 0
             obs = self._get_obs() # change desired goal back to original goal when contact is made
-            # print(0)
+            # print("flag switch: 1 -> 0")
             # print(obs["desired_goal"]) 
 
         #calculate reward based on contact flag -> switch controller
@@ -356,10 +341,6 @@ class RobotTaskEnv(gym.GoalEnv):
             reward = self.task.compute_reward(obs["achieved_goal"], obs["desired_goal"], info) * w_ee_distance
         else:
             reward = self.task.compute_reward(obs["achieved_goal"], obs["desired_goal"], info) * w_ee_distance
-
-        # obs["desired_goal"] = self.task.red_goal
-        # reward = self.task.compute_reward(obs["achieved_goal"], self.task.red_goal, info) * w_ee_distance
-        # reward = self.task.compute_reward(obs["achieved_goal"], self.task.get_goal(), info) * w_ee_distance
         
         assert isinstance(reward, float)  # needed for pytype cheking
 
