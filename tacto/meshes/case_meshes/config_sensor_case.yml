@@ -4,36 +4,35 @@
 # LICENSE file in the root directory of this source tree.
 
 sensor:
-  # By default:
-  # - Sensor (camera) is placed towards x-axis
-  # - Sensor origin is the same as .stl/.obj origin
-  
-  # Now, by customizing :
-  # - Sensor (camera) is placed towards -z-axis
-  # - Sensor origin is the same as .stl/.obj origin
-
   camera:
     - cam0:
-      position: [0, 0, 0.3] # Camera position
-      orientation: [0, 0, 0] # Euler angles, "xyz", in degrees; e.g. [0, 0, 0]: towards negative z-axis; [90, 0, -90]: towards x-axis
+      position: [-0.032, 0.0, -0.12] # Camera position
+      orientation: [0, 180, 0] # Euler angles, "xyz", in degrees; e.g. [0, 0, 0]: towards negative z-axis; [90, 0, -90]: towards x-axis
       yfov: 60 # Vertical field of view in degrees
+      znear: 0.001 # Distance to the near clipping plane, in meters
+      lightIDList: [0, 1, 2] # Select light ID list for rendering (OpenGL has max limit of 8 lights)
+
+    - cam1:
+      position: [-0.03, 0.0, -0.012] # Camera position
+      orientation: [0, -90, 0] # Euler angles, "xyz", in degrees; e.g. [0, 0, 0]: towards negative z-axis; [90, 0, -90]: towards x-axis
+      yfov: 96 # Vertical field of view in degrees
       znear: 0.001 # Distance to the near clipping plane, in meters
       lightIDList: [0, 1, 2] # Select light ID list for rendering (OpenGL has max limit of 8 lights)
   
   gel:
-    origin: [0.0, 0, 0.132] # Center coordinate of the gel, in meters
+    origin: [0.0658, -0.001, -0.008] # Center coordinate of the gel, in meters
+    orientation: [90, 0, 0]
     width: 0.123 # Width of the gel, y-axis, in meters
     height: 0.137 # Height of the gel, z-axis, in meters
     curvature: False  # Model the gel as curve? True/False
     curvatureMax: 0.005  # Deformation of the gel due to convexity
     R: 0.1 # Radius of curved gel
-    countW: 100 # Number of samples for horizontal direction; higher the finer details
+    countW: 400 # Number of samples for horizontal direction; higher the finer details
+    mesh: "../meshes/case_meshes/SoftPCB_mesh.STL"
   
   lights:
     # Light position & properties. 
-
-    origin: [0.005, 0, 0.015] # center of the light plane, in meters
-
+    origin: [0.0, 0.0, 0.0] # center of the light plane, in meters
     # Light position can be expressed in:
     # - polar coordinates: r and theta. (in y-z plane), and x coordinate of the plane
     # - cartesian coordinates: xyz
@@ -45,9 +44,8 @@ sensor:
       xs: [0, 0, 0] # x coordinate of the y-z plane
       rs: [0.02, 0.02, 0.02] # r in polar coordinates
       thetas: [30, 150, 270] # theta in polar coordinates, in degrees
-    
     colors: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] # R G B color
-    intensities: [1, 1, 1] # light intensity
+    intensities: [2, 2, 2] # light intensity
 
   noise: # Gaussian noise calibrated on output [0, 255]
     color:

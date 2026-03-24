@@ -42,17 +42,6 @@ def euler2matrix(angles=[0, 0, 0], translation=[0, 0, 0], xyz="xyz", degrees=Fal
     pose[:3, :3] = r.as_matrix()
     return pose
 
-
-# def euler2matrix(angles=[0, 0, 0], translation=[0, 0, 0]):
-#     q = p.getQuaternionFromEuler(angles)
-#     r = np.array(p.getMatrixFromQuaternion(q)).reshape(3, 3)
-
-#     pose = np.eye(4)
-#     pose[:3, 3] = translation
-#     pose[:3, :3] = r
-#     return pose
-
-
 class Renderer:
     def __init__(self, width, height, background, config_path):
         """
@@ -156,7 +145,12 @@ class Renderer:
         gel_trimesh = self._generate_gel_trimesh()
 
         mesh_gel = pyrender.Mesh.from_trimesh(gel_trimesh, smooth=False)
-        self.gel_pose0 = np.eye(4)
+        if hasattr(self.conf.sensor.gel, "mesh") and self.conf.sensor.gel.mesh is not None:
+            gel_pose = self.conf.sensor.gel.origin
+            gel_ori_rad = np.deg2rad(self.conf.sensor.gel.orientation)
+            self.gel_pose0 = euler2matrix(gel_ori_rad, gel_pose)
+        else:
+            self.gel_pose0 = np.eye(4)
         self.gel_node = pyrender.Node(mesh=mesh_gel, matrix=self.gel_pose0)
         self.scene.add_node(self.gel_node)
 

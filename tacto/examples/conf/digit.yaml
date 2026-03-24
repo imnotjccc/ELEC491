@@ -17,13 +17,13 @@ digit:
 
 object:
   urdf_path: "objects/sphere_small.urdf"
-  base_position: [-0.015, 0, 0.04]
+  base_position: [0.027, -0.137, 0.98]
   global_scaling: 0.15
 
 object_control_panel:
   slider_params:
     position_low: [-0.4, -0.2, 0.02]
-    position_high: [0.4, 0.2, 0.3]
+    position_high: [2.4, 2.2, 2.3]
 
 pybullet_camera:
   cameraDistance: 0.12
