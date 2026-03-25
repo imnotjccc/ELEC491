@@ -112,7 +112,7 @@ def draw_camera_coordinate_system(pos, quat, length=0.05, lifeTime=0.1):
 # Load the config YAML file from examples/conf/digit.yaml
 @hydra.main(config_path="conf", config_name="digit")
 def main(cfg):
-    Debug_force = False
+    Debug_force = True
 
     # Initialize digits
     #     :param width: scalar
@@ -146,6 +146,20 @@ def main(cfg):
         base_orientation= [0, 0, 0, 1] ,
         use_fixed_base=True,
     )
+    # Setting Penetration Depth
+    # F=k⋅d+c⋅v
+    stiffness = 1900.0  # Stiffness (N/m)：Determing the force it need to apply on
+                        #                  the object to penetrate into the rigid body.
+                        #                  Smaller value, easier to penetrate.
+    damping = 100.0     # Damping：Prevent high frequency oscillation of the object 
+                        #           or flip away the object when penetrating
+    p.changeDynamics(
+        bodyUniqueId=franka_body.id, 
+        linkIndex=12, 
+        contactStiffness=stiffness, 
+        contactDamping=damping
+    )
+
 
     print("-----URDF INFO-----")
     print("base link name:", p.getBodyInfo(franka_body.id)[0].decode("utf-8"))  # base 的名字
@@ -175,9 +189,9 @@ def main(cfg):
     )
 
     if Debug_force:
-        step = 1e-5
+        step = 1e-4
         y_min = -0.0766
-        y_max = y_min + 0.005
+        y_max = y_min + 0.05
         y0 = y_min
         
         direction = +1
@@ -252,12 +266,17 @@ def main(cfg):
                 y0 = y_max; direction = -1
             elif y0 <= y_min:
                 y0 = y_min; direction = +1
-            p.changeConstraint(cid, jointChildPivot=[x0, y0, z0], maxForce=20)
+            p.changeConstraint(cid, jointChildPivot=[x0, y0, z0], maxForce=40)
 
-            F, delta_max, delta_min = tactileSensor_ee.renderer.estimate_force_from_tacto_depth(depth)
-            if F != 0:
-                plotter.update_plot(z_current=abs(y0), f_current=F)
-                print(f"y = {y0} f = {F}")
+            F, delta_max, delta_min = tactileSensor_ee.renderer.estimate_force_from_tacto_depth(depth, 
+                                                                                                d_max = 5e-3, 
+                                                                                                d_min=1e-4, 
+                                                                                                f_offset = 0.0, 
+                                                                                                k = 2000.0
+                                                                                                )
+            if F[0] != 0:
+                plotter.update_plot(z_current=abs(y0), f_current=F[0])
+                print(f"y = {y0} f = {F[0]}")
 
         color, depth = tactileSensor_ee.render()
         tactileSensor_ee.updateGUI(color, depth)

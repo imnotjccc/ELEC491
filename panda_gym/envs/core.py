@@ -297,6 +297,8 @@ class RobotTaskEnv(gym.GoalEnv):
 
         self.sim.step()
 
+        # get contact force
+
         # get robot joint velocities
         joint_velocities = []
         for joint_idx in self.robot.arm_indices:

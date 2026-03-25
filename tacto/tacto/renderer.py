@@ -605,24 +605,24 @@ class Renderer:
 
         return color, depth
     
-    def estimate_force_from_tacto_depth(self, depth, d_max = 5e-3, d_min=1e-4, f_offset = 5.0):
-        depth = depth[0]
-        #depth0 = depth0[0]
+    def estimate_force_from_tacto_depth(self, depth, d_max = 5e-3, d_min=1e-4, f_offset = 5.0, k = 1283.5):
+        F = {}
+        delta_mean = {}
+        delta_max = {}
 
-        depth = np.asarray(depth, dtype=np.float32)
-        #depth0 = np.asarray(depth0, dtype=np.float32)
+        for cam_nb in range(self.nb_cam):
+            depth = np.asarray(depth[cam_nb], dtype=np.float32)
 
-        dd = depth
-        #dd = np.maximum(dd, 0.0)
+            mask = depth > d_min
+            if not np.any(mask):
+                F[cam_nb] = 0.0
+                delta_max[cam_nb] = 0.0
+                delta_mean[cam_nb] = 0.0
+            else:
+                delta_max[cam_nb] = float(depth[mask].max())
+                delta_mean[cam_nb] = float(depth[mask].mean())
 
-        mask = dd > d_min
-        if not np.any(mask):
-            return 0.0, 0.0, 0.0
+                F[cam_nb] = k * delta_mean[cam_nb] - f_offset
+                F[cam_nb] = float(np.clip(F[cam_nb], self.min_force, self.max_force))
 
-        delta_max = float(dd[mask].max())
-        delta_mean = float(dd[mask].mean())
-
-        k = 1283.5
-        F = k * delta_mean - f_offset
-        F = float(np.clip(F, self.min_force, self.max_force))
         return F, delta_max, delta_mean

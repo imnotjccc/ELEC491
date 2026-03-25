@@ -13,14 +13,14 @@ sensor:
       lightIDList: [0, 1, 2] # Select light ID list for rendering (OpenGL has max limit of 8 lights)
 
     - cam1:
-      position: [-0.03, 0.0, -0.012] # Camera position
+      position: [-0.03, 0.0, -0.01] # Camera position
       orientation: [0, -90, 0] # Euler angles, "xyz", in degrees; e.g. [0, 0, 0]: towards negative z-axis; [90, 0, -90]: towards x-axis
       yfov: 96 # Vertical field of view in degrees
       znear: 0.001 # Distance to the near clipping plane, in meters
       lightIDList: [0, 1, 2] # Select light ID list for rendering (OpenGL has max limit of 8 lights)
   
   gel:
-    origin: [0.0658, -0.001, -0.003] # Center coordinate of the gel, in meters [0.0658, -0.001, -0.008]
+    origin: [0.063, -0.003, -0.0096] # Center coordinate of the gel, in meters [0.0658, -0.001, -0.008]
     orientation: [90, 0, 0]
     width: 0.123 # Width of the gel, y-axis, in meters
     height: 0.137 # Height of the gel, z-axis, in meters
@@ -28,7 +28,7 @@ sensor:
     curvatureMax: 0.005  # Deformation of the gel due to convexity
     R: 0.1 # Radius of curved gel
     countW: 400 # Number of samples for horizontal direction; higher the finer details
-    mesh: "../meshes/case_meshes/SoftPCB_mesh.STL"
+    mesh: "../meshes/case_meshes/SoftPCB_mesh_inB_outR.stl"
   
   lights:
     # Light position & properties. 
