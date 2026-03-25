@@ -40,16 +40,16 @@ class Reach(Task):
             position=np.zeros(3),
             rgba_color=np.array([0.1, 0.9, 0.1, 0.4]),
         )
-
+        self.obsticle_name = "screen"
         # add some obsticles
         # add a screen
-        # self.sim.create_box(
-        #     body_name="screen",
-        #     half_extents=np.array([0.01, 0.2, 0.1]),
-        #     mass=0.0,
-        #     position=np.zeros(3),
-        #     rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
-        # )
+        self.sim.create_box(
+            body_name=self.obsticle_name,
+            half_extents=np.array([0.01, 0.2, 0.1]),
+            mass=0.0,
+            position=np.zeros(3),
+            rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
+        )
 
         #new goal poaition (red)
         self.sim.create_sphere(

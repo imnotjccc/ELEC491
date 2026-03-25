@@ -251,6 +251,8 @@ class RobotTaskEnv(gym.GoalEnv):
         )
         self.action_space = self.robot.action_space
         self.compute_reward = self.task.compute_reward
+        # Tacto camera setting
+        self.robot.tactileSensor_ee.add_body(self.sim._bodies_idx[self.task.obsticle_name])
 
     def _get_obs(self) -> Dict[str, np.ndarray]:
         robot_obs = self.robot.get_obs()  # robot state

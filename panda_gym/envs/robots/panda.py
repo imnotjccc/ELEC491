@@ -3,7 +3,7 @@ from gym import spaces
 
 from panda_gym.envs.core import PyBulletRobot
 from panda_gym.pybullet import PyBullet
-
+import tacto
 
 class Panda(PyBulletRobot):
     """Panda robot in PyBullet.
@@ -31,9 +31,7 @@ class Panda(PyBulletRobot):
         super().__init__(
             sim,
             body_name="panda",
-            # file_name="franka_panda/panda.urdf",
             file_name="panda_gym/envs/robots/franka_panda/panda.urdf",
-            # file_name="./urdf/franka_case/urdf/Franka_Research_3_v2.urdf",
             base_position=base_position,
             action_space=action_space,
             joint_indices=np.array([0, 1, 2, 3, 4, 5, 6, 9, 10]),
@@ -51,7 +49,25 @@ class Panda(PyBulletRobot):
         self.sim.set_spinning_friction(self.body_name, self.fingers_indices[1], spinning_friction=0.001)
 
         # init tacto sensor
-        
+        self.tactileSensor_ee = tacto.Sensor(
+            width=120,
+            height=160,
+            background=None,
+            config_path="../meshes/case_meshes/config_sensor_case.yml",
+            visualize_gui=True,
+            show_depth=True,
+            zrange=0.0002, #0.002
+            cid=0,
+        )
+        self.sim.tatco_set_penetration_depth(
+            body = "panda",
+            link = 12,
+            stiffness = 1900.0,
+            damping = 100.0
+        )
+        self.tactileSensor_ee.add_camera(self.sim._bodies_idx["panda"], [12])
+
+        #p.resetDebugVisualizerCamera(**cfg.pybullet_camera)
 
     def set_action(self, action: np.ndarray) -> None:
         action = action.copy()  # ensure action don't change

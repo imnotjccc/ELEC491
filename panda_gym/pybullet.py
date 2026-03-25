@@ -630,3 +630,20 @@ class PyBullet:
             linkIndex=link,
             spinningFriction=spinning_friction,
         )
+
+
+    def tatco_set_penetration_depth(self, body: str, link: int, damping: float, stiffness: float) -> None:
+        """
+        For Tacto sensor, set case base penetration depth.
+        
+        :param damping: Stiffness (N/m): Determing the force it need to apply on the object to penetrate into the rigid body. Smaller value, easier to penetrate.
+        :type damping: float
+        :param stiffness: Damping: Prevent high frequency oscillation of the object or flip away the object when penetrating
+        :type stiffness: float
+        """
+        self.physics_client.changeDynamics(
+            bodyUniqueId=self._bodies_idx[body], 
+            linkIndex=link, 
+            contactStiffness=stiffness, 
+            contactDamping=damping
+        )
