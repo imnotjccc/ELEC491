@@ -23,7 +23,7 @@ sensor:
     curvature: True  # Model the gel as curve? True/False
     curvatureMax: 0.005  # Deformation of the gel due to convexity
     R: 0.1 # Radius of curved gel
-    countW: 100 # Number of samples for horizontal direction; higher the finer details
+    countW: 1080 # Number of samples for horizontal direction; higher the finer details
   
   lights:
     # Light position & properties. 

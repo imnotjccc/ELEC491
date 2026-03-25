@@ -9,7 +9,7 @@ sensor:
       position: [-0.032, 0.0, -0.12] # Camera position
       orientation: [0, 180, 0] # Euler angles, "xyz", in degrees; e.g. [0, 0, 0]: towards negative z-axis; [90, 0, -90]: towards x-axis
       yfov: 60 # Vertical field of view in degrees
-      znear: 0.001 # Distance to the near clipping plane, in meters
+      znear: 0.0001 # Distance to the near clipping plane, in meters
       lightIDList: [0, 1, 2] # Select light ID list for rendering (OpenGL has max limit of 8 lights)
 
     - cam1:
@@ -20,7 +20,7 @@ sensor:
       lightIDList: [0, 1, 2] # Select light ID list for rendering (OpenGL has max limit of 8 lights)
   
   gel:
-    origin: [0.0658, -0.001, -0.008] # Center coordinate of the gel, in meters
+    origin: [0.0658, -0.001, -0.003] # Center coordinate of the gel, in meters [0.0658, -0.001, -0.008]
     orientation: [90, 0, 0]
     width: 0.123 # Width of the gel, y-axis, in meters
     height: 0.137 # Height of the gel, z-axis, in meters

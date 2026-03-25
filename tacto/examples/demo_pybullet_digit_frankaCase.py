@@ -11,6 +11,8 @@ import hydra
 import pybullet as p
 import pybulletX as px
 import tacto  # Import TACTO
+from forceDisplacementPlotter import ForceDisplacementPlotter
+import time
 
 log = logging.getLogger(__name__)
 
@@ -110,10 +112,9 @@ def draw_camera_coordinate_system(pos, quat, length=0.05, lifeTime=0.1):
 # Load the config YAML file from examples/conf/digit.yaml
 @hydra.main(config_path="conf", config_name="digit")
 def main(cfg):
-    # Initialize digits
-    bg = cv2.imread("conf/bg_digit_240_320.jpg")
-    #digits = tacto.Sensor(**cfg.tacto, background=bg)
+    Debug_force = False
 
+    # Initialize digits
     #     :param width: scalar
     #     :param height: scalar
     #     :param background: image
@@ -128,7 +129,7 @@ def main(cfg):
         config_path="../meshes/case_meshes/config_sensor_case.yml",
         visualize_gui=True,
         show_depth=True,
-        zrange=0.002,
+        zrange=0.0002, #0.002
         cid=0,
     )
 
@@ -173,29 +174,67 @@ def main(cfg):
         baseOrientation=[0, 0, 0, 1],
     )
 
-    # Add object to pybullet and tacto simulator
-    #obj = px.Body(**cfg.object)
-    obj = px.Body(
-        urdf_path="objects/sphere_small.urdf",
-        base_position=[0.027, -0.137, 0.98],
-        base_orientation=[0.0, 0.0, 0.0, 1.0],
-        use_fixed_base=False,
-        global_scaling=0.3
-    )
-    tactileSensor_ee.add_body(obj)
+    if Debug_force:
+        step = 1e-5
+        y_min = -0.0766
+        y_max = y_min + 0.005
+        y0 = y_min
+        
+        direction = +1
+        obj = px.Body(
+            urdf_path="objects/sphere_small.urdf",
+            base_position=[0.027, y0, 0.98],
+            base_orientation=[0.0, 0.0, 0.0, 1.0],
+            use_fixed_base=False,
+            global_scaling=0.5
+        )
 
-    # Create control panel to control the 6DoF pose of the object
-    panel = px.gui.PoseControlPanel(obj, **cfg.object_control_panel)
-    panel.start()
-    log.info("Use the slides to move the object until in contact with the DIGIT")
+        print("base pos/orn =", p.getBasePositionAndOrientation(obj.id))
+        obj_pos0, obj_orn0 = p.getBasePositionAndOrientation(obj.id)
+        x0, y0, z0 = obj_pos0
+
+        cid = p.createConstraint(
+            parentBodyUniqueId=obj.id,
+            parentLinkIndex=-1,
+            childBodyUniqueId=-1,        # world
+            childLinkIndex=-1,
+            jointType=p.JOINT_FIXED,
+            jointAxis=[0, 0, 0],
+            parentFramePosition=[0, 0, 0],     # 在球的局部坐标：球心
+            childFramePosition=[x0, y0, z0],   # 在世界坐标：目标点
+            parentFrameOrientation=obj_orn0,   # 可选：想锁定姿态就给
+            childFrameOrientation=[0, 0, 0, 1]
+        )
+        p.changeConstraint(cid, maxForce=20)
+
+        tactileSensor_ee.add_body(obj)
+
+    else:
+        # Add object to pybullet and tacto simulator
+        obj = px.Body(
+            urdf_path="objects/sphere_small.urdf",
+            base_position=[0.027, -0.074, 0.98],
+            base_orientation=[0.0, 0.0, 0.0, 1.0],
+            use_fixed_base=False,
+            global_scaling=0.3
+        )
+        tactileSensor_ee.add_body(obj)
+        # Create control panel to control the 6DoF pose of the object
+        panel = px.gui.PoseControlPanel(obj, **cfg.object_control_panel)
+        panel.start()
+        log.info("Use the slides to move the object until in contact with the DIGIT")
 
     # run p.stepSimulation in another thread
     t = px.utils.SimulationThread(real_time_factor=1.0)
     t.start()
 
+    plotter = ForceDisplacementPlotter(k_theoretical=1283.5)
+
+    color, depth = tactileSensor_ee.render()
+    tactileSensor_ee.updateGUI(color, depth)
+
     while True:
-        color, depth = tactileSensor_ee.render()
-        tactileSensor_ee.updateGUI(color, depth)
+        p.stepSimulation()
 
         gel_matrix = tactileSensor_ee.renderer.gel_node.matrix
         gel_pos, gel_orn = getPosAndOrnFromMatrix(gel_matrix)
@@ -205,7 +244,25 @@ def main(cfg):
             cam_matrix = tactileSensor_ee.renderer.camera_nodes[nb_cam].matrix
             cam_pos, gel_orn = getPosAndOrnFromMatrix(cam_matrix)
             draw_camera_coordinate_system(cam_pos, gel_orn, length=0.1)
+        
+        if  Debug_force:
+            # 每帧更新目标z
+            y0 += direction * step
+            if y0 >= y_max:
+                y0 = y_max; direction = -1
+            elif y0 <= y_min:
+                y0 = y_min; direction = +1
+            p.changeConstraint(cid, jointChildPivot=[x0, y0, z0], maxForce=20)
+
+            F, delta_max, delta_min = tactileSensor_ee.renderer.estimate_force_from_tacto_depth(depth)
+            if F != 0:
+                plotter.update_plot(z_current=abs(y0), f_current=F)
+                print(f"y = {y0} f = {F}")
+
+        color, depth = tactileSensor_ee.render()
+        tactileSensor_ee.updateGUI(color, depth)
     t.stop()
+    plotter.keep_window_open()
 
 if __name__ == "__main__":
     main()

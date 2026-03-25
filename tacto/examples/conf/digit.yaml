@@ -17,7 +17,7 @@ digit:
 
 object:
   urdf_path: "objects/sphere_small.urdf"
-  base_position: [0.027, -0.137, 0.98]
+  base_position: [0.027, -0.074, 0.98]
   global_scaling: 0.15
 
 object_control_panel:
