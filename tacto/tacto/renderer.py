@@ -605,7 +605,7 @@ class Renderer:
 
         return color, depth
     
-    def estimate_force_from_tacto_depth(self, depth, d_max = 5e-3, d_min=1e-6, f_offset = 7.5):
+    def estimate_force_from_tacto_depth(self, depth, d_max = 5e-3, d_min=1e-4, f_offset = 5.0):
         depth = depth[0]
         #depth0 = depth0[0]
 
@@ -623,6 +623,6 @@ class Renderer:
         delta_mean = float(dd[mask].mean())
 
         k = 1283.5
-        F = k * delta_max - f_offset
+        F = k * delta_mean - f_offset
         F = float(np.clip(F, self.min_force, self.max_force))
         return F, delta_max, delta_mean
