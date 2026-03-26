@@ -2,6 +2,9 @@ from typing import Any, Dict, Union
 
 import numpy as np
 
+import pybulletX as px
+import pybullet as p
+
 from panda_gym.envs.core import Task
 from panda_gym.utils import distance
 
@@ -21,8 +24,9 @@ class Reach(Task):
         self.get_ee_position = get_ee_position
         self.contact_flag = contact_flag
 
-        self.goal_range_low = np.array([-goal_range / 2, -goal_range / 2, 0.15])
-        self.goal_range_high = np.array([goal_range / 2, goal_range / 2, goal_range - 0.05])
+        self.goal_range_low = np.array([0.18, -goal_range / 2, 0.15])
+        self.goal_range_high = np.array([0.25, goal_range / 2, goal_range - 0.05])
+        # self.goal_range_high = np.array([0.05, 0.05, goal_range - 0.05])
 
         with self.sim.no_rendering():
             self._create_scene()
@@ -43,13 +47,36 @@ class Reach(Task):
         self.obsticle_name = "screen"
         # add some obsticles
         # add a screen
-        self.sim.create_box(
-            body_name=self.obsticle_name,
-            half_extents=np.array([0.01, 0.2, 0.1]),
-            mass=0.0,
-            position=np.zeros(3),
-            rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
+        # self.sim.create_box(
+        #     body_name=self.obsticle_name,
+        #     half_extents=np.array([0.01, 0.2, 0.2]),
+        #     mass=0.0,
+        #     position=np.zeros(10),
+        #     rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
+        # )
+
+        # create a new structure for pybulletx
+        self.obj = px.Body(
+            urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
+            base_position=[0.15, -0.25, 0.15],
+            base_orientation=[0.0, 0.0, -0.7071, 0.7071],
+            use_fixed_base=True,
+            global_scaling=1.0
         )
+
+        self.cid = p.createConstraint(
+            parentBodyUniqueId=self.obj.id,
+            parentLinkIndex=-1,
+            childBodyUniqueId=-1,        # world
+            childLinkIndex=-1,
+            jointType=p.JOINT_FIXED,
+            jointAxis=[0, 0, 0],
+            parentFramePosition=[0, 0, 0],     # 在球的局部坐标：球心
+            childFramePosition=[0.0, 0.0, 0.0],   # 在世界坐标：目标点
+            parentFrameOrientation=[0.0, 0.0, 0.0, 1.0],   # 可选：想锁定姿态就给
+            childFrameOrientation=[0, 0, 0, 1]
+        )
+        p.changeConstraint(self.cid, maxForce=20)
 
         #new goal poaition (red)
         self.sim.create_sphere(
@@ -70,9 +97,14 @@ class Reach(Task):
 
     def reset(self) -> None:
         self.goal = self._sample_goal()
-        self.red_goal = self._sample_red_goal()
+        # self.red_goal = self._sample_red_goal()
+        self.red_goal = self.goal.copy()
+        self.red_goal[0] -= 0.30 # make sure red goal is not
+        # self.screen_pose = self.goal.copy()
+        # self.screen_pose[0] -= 0.1
 
         self.sim.set_base_pose("red_goal", self.red_goal, np.array([0.0, 0.0, 0.0, 1.0]))
+        # self.sim.set_base_pose("screen", self.screen_pose, np.array([0.0, 0.0, 0.0, 1.0]))
         self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0])) # make target the new goal
 
     def _sample_goal(self) -> np.ndarray:

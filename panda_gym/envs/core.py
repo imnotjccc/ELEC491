@@ -5,6 +5,7 @@ import gym
 import gym.spaces
 import gym.utils.seeding
 import numpy as np
+import pybullet as p
 from panda_gym.utils import distance
 
 from panda_gym.pybullet import PyBullet
@@ -252,7 +253,7 @@ class RobotTaskEnv(gym.GoalEnv):
         self.action_space = self.robot.action_space
         self.compute_reward = self.task.compute_reward
         # Tacto camera setting
-        self.robot.tactileSensor_ee.add_body(self.sim._bodies_idx[self.task.obsticle_name])
+        self.robot.tactileSensor_ee.add_body(self.task.obj)
 
     def _get_obs(self) -> Dict[str, np.ndarray]:
         robot_obs = self.robot.get_obs()  # robot state
@@ -292,14 +293,29 @@ class RobotTaskEnv(gym.GoalEnv):
 
     def step(self, action: np.ndarray) -> Tuple[Dict[str, np.ndarray], float, bool, Dict[str, Any]]:
         # low pass filter for actions
+        # print(action)
         alpha = 0.1
         self.filtered_action = alpha * action + (1 - alpha) * self.filtered_action
         action_to_apply = self.filtered_action
         self.robot.set_action(action_to_apply)
-
+        # print(action_to_apply)
         self.sim.step()
 
         # get contact force
+        color, depth = self.robot.tactileSensor_ee.render() # update tacto sensor
+   
+        F, delta_max, delta_min = self.robot.tactileSensor_ee.renderer.estimate_force_from_tacto_depth(depth, 
+                                                                                                d_max = 5e-3, 
+                                                                                                d_min=1e-6, 
+                                                                                                f_offset = 0.0, 
+                                                                                                k = 2000.0
+                                                                                                )
+        # self.robot.tactileSensor_ee.updateGUI(color, depth)
+        gel_matrix = self.robot.tactileSensor_ee.renderer.gel_node.matrix
+        gel_pos, gel_orn = self.robot.getPosAndOrnFromMatrix(gel_matrix)
+        p.resetBasePositionAndOrientation(self.robot.gel_vis_id, gel_pos, gel_orn)
+        # if any (ef > 0 for ef in F):
+        #     print("Contact force: ", F, delta_max, delta_min)
 
         # get robot joint velocities
         joint_velocities = []
@@ -329,7 +345,18 @@ class RobotTaskEnv(gym.GoalEnv):
         # weights for reward components
         w_ee_distance = 1.0
 
-        if self.task.contact_flag == 0 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
+        # if self.task.contact_flag == 0 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
+        #     self.task.contact_flag = 1
+        #     obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
+        #     # print("flag switch: 0 -> 1")
+        #     # print(obs["desired_goal"])
+        # elif self.task.contact_flag == 1 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
+        #     self.task.contact_flag = 0
+        #     obs = self._get_obs() # change desired goal back to original goal when contact is made
+        #     # print("flag switch: 1 -> 0")
+        #     # print(obs["desired_goal"]) 
+
+        if self.task.contact_flag == 0 and any(ef > 2.5 for ef in F.values()):
             self.task.contact_flag = 1
             obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
             # print("flag switch: 0 -> 1")

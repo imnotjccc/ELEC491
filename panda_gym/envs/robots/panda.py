@@ -4,6 +4,7 @@ from gym import spaces
 from panda_gym.envs.core import PyBulletRobot
 from panda_gym.pybullet import PyBullet
 import tacto
+import pybullet as p
 
 class Panda(PyBulletRobot):
     """Panda robot in PyBullet.
@@ -25,7 +26,13 @@ class Panda(PyBulletRobot):
     ) -> None:
         self.block_gripper = block_gripper
         self.control_type = control_type
-        n_action = 3 if self.control_type == "ee" else 7  # control (x, y z) if "ee", else, control the 7 joints
+        # n_action = 3 if self.control_type == "ee" else 7  # control (x, y z) if "ee", else, control the 7 joints
+        if self.control_type == "ee":
+            n_action = 3
+        elif self.control_type == "ee_orn":
+            n_action = 6
+        else:
+            n_action = 7
         n_action += 0 if self.block_gripper else 1
         action_space = spaces.Box(-1.0, 1.0, shape=(n_action,), dtype=np.float32)
         super().__init__(
@@ -39,6 +46,17 @@ class Panda(PyBulletRobot):
             ee_index = np.array([11]), # define end-effector link index
             joint_forces=np.array([87.0, 87.0, 87.0, 87.0, 12.0, 120.0, 120.0, 170.0, 170.0]),
         )
+        #debug urdf
+        print("-----URDF INFO-----")
+        print("base link name:", p.getBodyInfo(self.sim._bodies_idx["panda"])[0].decode("utf-8"))  # base 的名字
+        n = p.getNumJoints(self.sim._bodies_idx["panda"])
+        for i in range(n):
+            ji = p.getJointInfo(self.sim._bodies_idx["panda"], i)
+            joint_name = ji[1].decode("utf-8")
+            link_name  = ji[12].decode("utf-8")   # 这个字段是 child link name
+            parent     = ji[16]                   # parent link index
+            joint_type = ji[2]
+            print(f"linkIndex={i:2d} link={link_name:20s}  joint={joint_name:20s}  parent={parent} type={joint_type}")
 
         self.fingers_indices = np.array([9, 10])
         self.neutral_joint_values = np.array([0.00, 0.41, 0.00, -1.85, 0.00, 2.26, 0.79, 0.00, 0.00])
@@ -53,7 +71,7 @@ class Panda(PyBulletRobot):
             width=120,
             height=160,
             background=None,
-            config_path="../meshes/case_meshes/config_sensor_case.yml",
+            config_path="tacto/meshes/case_meshes/config_sensor_case.yml",
             visualize_gui=True,
             show_depth=True,
             zrange=0.0002, #0.002
@@ -67,6 +85,21 @@ class Panda(PyBulletRobot):
         )
         self.tactileSensor_ee.add_camera(self.sim._bodies_idx["panda"], [12])
 
+        # debug gel shape
+        vis = p.createVisualShape(
+            shapeType=p.GEOM_MESH,
+            fileName=self.tactileSensor_ee.renderer.conf.sensor.gel.mesh,   # 或 .stl
+            meshScale=[1, 1, 1],
+            rgbaColor=[1, 1, 0, 0.4],               # 半透明黄
+        )
+        self.gel_vis_id = p.createMultiBody(
+            baseMass=0,
+            baseVisualShapeIndex=vis,
+            baseCollisionShapeIndex=-1,
+            basePosition=[0, 0, 0],
+            baseOrientation=[0, 0, 0, 1],
+        )
+
         #p.resetDebugVisualizerCamera(**cfg.pybullet_camera)
 
     def set_action(self, action: np.ndarray) -> None:
@@ -74,6 +107,9 @@ class Panda(PyBulletRobot):
         action = np.clip(action, self.action_space.low, self.action_space.high)
         if self.control_type == "ee":
             ee_displacement = action[:3]
+            target_arm_angles = self.ee_displacement_to_target_arm_angles(ee_displacement)
+        elif self.control_type == "ee_orn":
+            ee_displacement = action[:6]
             target_arm_angles = self.ee_displacement_to_target_arm_angles(ee_displacement)
         else:
             arm_joint_ctrl = action[:7]
@@ -98,18 +134,35 @@ class Panda(PyBulletRobot):
         Returns:
             np.ndarray: Target arm angles, as the angles of the 7 arm joints.
         """
-        ee_displacement = ee_displacement[:3] * 0.05  # limit maximum change in position
-        # get the current position and the target position
-        ee_position = self.get_ee_position()
-        target_ee_position = ee_position + ee_displacement
-        # Clip the height target. For some reason, it has a great impact on learning
-        target_ee_position[2] = np.max((0, target_ee_position[2]))
-        # compute the new joint angles
-        target_arm_angles = self.inverse_kinematics(
-            link=self.ee_link, position=target_ee_position, orientation=np.array([1.0, 0.0, 0.0, 0.0])
-        )
-        target_arm_angles = target_arm_angles[:7]  # remove fingers angles
+        if self.control_type == "ee":
+            ee_displacement = ee_displacement[:3] * 0.05  # limit maximum change in position
+            # get the current position and the target position
+            ee_position = self.get_ee_position()
+            target_ee_position = ee_position + ee_displacement
+            # Clip the height target. For some reason, it has a great impact on learning
+            target_ee_position[2] = np.max((0, target_ee_position[2]))
+            # compute the new joint angles
+            target_arm_angles = self.inverse_kinematics(
+                link=self.ee_link, position=target_ee_position, orientation=np.array([1.0, 0.0, 0.0, 0.0])
+            )
+            target_arm_angles = target_arm_angles[:7]  # remove fingers angles
+        elif self.control_type == "ee_orn":
+            ee_displacement = ee_displacement[:3] * 0.05  # limit maximum change in position
+            ee_orn_ctrl = ee_displacement[3:] * 0.05  # limit maximum change in orientation
+            # get the current position and the target position
+            ee_position = self.get_ee_position()
+            target_ee_position = ee_position + ee_displacement[:3]
+            # Clip the height target. For some reason, it has a great impact on learning
+            target_ee_position[2] = np.max((0, target_ee_position[2]))
+            # compute the new joint angles
+            current_ee_orn = p.getLinkState(self.sim._bodies_idx[self.body_name], self.ee_link)[1]
+            target_ee_orn = p.getQuaternionFromEuler(np.array(p.getEulerFromQuaternion(current_ee_orn)) + ee_orn_ctrl)
+            target_arm_angles = self.inverse_kinematics(
+                link=self.ee_link, position=target_ee_position, orientation=target_ee_orn
+            )
+            target_arm_angles = target_arm_angles[:7]  # remove fingers angles
         return target_arm_angles
+        
 
     def arm_joint_ctrl_to_target_arm_angles(self, arm_joint_ctrl: np.ndarray) -> np.ndarray:
         """Compute the target arm angles from the arm joint control.
@@ -166,3 +219,60 @@ class Panda(PyBulletRobot):
         for i in self.arm_indices:
             arm_link_vel.append(self.sim.get_joint_velocity(self.body_name, i))
         return np.array(arm_link_vel)
+    
+    def getPosAndOrnFromMatrix(self, matrix):
+        """Extract position and orientation quaternion from a transform matrix.
+
+        Accepts a 4x4 homogeneous matrix (or a flat list/array of length 16) or a 3x4
+        transform (rows are [R|t]). Returns (position, quaternion) where quaternion is
+        in pybullet format [x, y, z, w].
+        """
+        m = np.array(matrix, dtype=float)
+        # reshape flat 16-length to 4x4
+        if m.size == 16:
+            m = m.reshape(4, 4)
+        # accept 3x4 (R|t) or 4x4 homogeneous
+        if m.shape == (4, 4):
+            R = m[:3, :3]
+            pos = m[:3, 3]
+        elif m.shape == (3, 4):
+            R = m[:, :3]
+            pos = m[:, 3]
+        else:
+            raise ValueError(f"Unsupported matrix shape {m.shape}, expected (4,4) or (3,4)")
+
+        r00, r01, r02 = R[0, 0], R[0, 1], R[0, 2]
+        r10, r11, r12 = R[1, 0], R[1, 1], R[1, 2]
+        r20, r21, r22 = R[2, 0], R[2, 1], R[2, 2]
+
+        trace = r00 + r11 + r22
+        if trace > 0.0:
+            S = np.sqrt(trace + 1.0) * 2.0
+            qw = 0.25 * S
+            qx = (r21 - r12) / S
+            qy = (r02 - r20) / S
+            qz = (r10 - r01) / S
+        else:
+            if (r00 > r11) and (r00 > r22):
+                S = np.sqrt(1.0 + r00 - r11 - r22) * 2.0
+                qw = (r21 - r12) / S
+                qx = 0.25 * S
+                qy = (r01 + r10) / S
+                qz = (r02 + r20) / S
+            elif r11 > r22:
+                S = np.sqrt(1.0 + r11 - r00 - r22) * 2.0
+                qw = (r02 - r20) / S
+                qx = (r01 + r10) / S
+                qy = 0.25 * S
+                qz = (r12 + r21) / S
+            else:
+                S = np.sqrt(1.0 + r22 - r00 - r11) * 2.0
+                qw = (r10 - r01) / S
+                qx = (r02 + r20) / S
+                qy = (r12 + r21) / S
+                qz = 0.25 * S
+
+        # pybullet uses [x, y, z, w]
+        quat = [float(qx), float(qy), float(qz), float(qw)]
+        pos = [float(p) for p in pos]
+        return pos, quat

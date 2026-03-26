@@ -21,14 +21,14 @@ sensor:
   
   gel:
     origin: [0.063, -0.003, -0.0096] # Center coordinate of the gel, in meters [0.0658, -0.001, -0.008]
-    orientation: [90, 0, 0]
+    orientation: [90, 0, 0] # [90, 0, 0]
     width: 0.123 # Width of the gel, y-axis, in meters
     height: 0.137 # Height of the gel, z-axis, in meters
     curvature: False  # Model the gel as curve? True/False
     curvatureMax: 0.005  # Deformation of the gel due to convexity
     R: 0.1 # Radius of curved gel
     countW: 400 # Number of samples for horizontal direction; higher the finer details
-    mesh: "../meshes/case_meshes/SoftPCB_mesh_inB_outR.stl"
+    mesh: "/home/jc/Desktop/ELEC491/panda-gym/panda_gym-2.0.0/tacto/meshes/case_meshes/SoftPCB_mesh_inB_outR.stl"
   
   lights:
     # Light position & properties. 

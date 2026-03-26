@@ -611,8 +611,8 @@ class Renderer:
         delta_max = {}
 
         for cam_nb in range(self.nb_cam):
-            depth = np.asarray(depth[cam_nb], dtype=np.float32)
-
+            depth = np.asarray(abs(depth[cam_nb]), dtype=np.float32)
+            # print("Depth range: ", depth.min(), depth.max())
             mask = depth > d_min
             if not np.any(mask):
                 F[cam_nb] = 0.0
