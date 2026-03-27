@@ -22,7 +22,7 @@ class Panda(PyBulletRobot):
         sim: PyBullet,
         block_gripper: bool = False,
         base_position: np.ndarray = np.array([0.0, 0.0, 0.0]),
-        control_type: str = "ee",
+        control_type: str = "ee_orn",
     ) -> None:
         self.block_gripper = block_gripper
         self.control_type = control_type
@@ -33,6 +33,12 @@ class Panda(PyBulletRobot):
             n_action = 6
         else:
             n_action = 7
+        # print(self.control_type)
+        # if self.control_type == "ee_orn":
+        #     n_action = 6
+        # else:
+        #     n_action = 7
+
         n_action += 0 if self.block_gripper else 1
         action_space = spaces.Box(-1.0, 1.0, shape=(n_action,), dtype=np.float32)
         super().__init__(
@@ -46,21 +52,25 @@ class Panda(PyBulletRobot):
             ee_index = np.array([11]), # define end-effector link index
             joint_forces=np.array([87.0, 87.0, 87.0, 87.0, 12.0, 120.0, 120.0, 170.0, 170.0]),
         )
-        #debug urdf
-        print("-----URDF INFO-----")
-        print("base link name:", p.getBodyInfo(self.sim._bodies_idx["panda"])[0].decode("utf-8"))  # base 的名字
-        n = p.getNumJoints(self.sim._bodies_idx["panda"])
-        for i in range(n):
-            ji = p.getJointInfo(self.sim._bodies_idx["panda"], i)
-            joint_name = ji[1].decode("utf-8")
-            link_name  = ji[12].decode("utf-8")   # 这个字段是 child link name
-            parent     = ji[16]                   # parent link index
-            joint_type = ji[2]
-            print(f"linkIndex={i:2d} link={link_name:20s}  joint={joint_name:20s}  parent={parent} type={joint_type}")
+        # debug urdf
+        # print("-----URDF INFO-----")
+        # print("base link name:", p.getBodyInfo(self.sim._bodies_idx["panda"])[0].decode("utf-8"))  # base 的名字
+        # n = p.getNumJoints(self.sim._bodies_idx["panda"])
+        # for i in range(n):
+        #     ji = p.getJointInfo(self.sim._bodies_idx["panda"], i)
+        #     joint_name = ji[1].decode("utf-8")
+        #     link_name  = ji[12].decode("utf-8")   # 这个字段是 child link name
+        #     parent     = ji[16]                   # parent link index
+        #     joint_type = ji[2]
+        #     print(f"linkIndex={i:2d} link={link_name:20s}  joint={joint_name:20s}  parent={parent} type={joint_type}")
 
         self.fingers_indices = np.array([9, 10])
-        self.neutral_joint_values = np.array([0.00, 0.41, 0.00, -1.85, 0.00, 2.26, 0.79, 0.00, 0.00])
+
         self.ee_link = 11
+
+        # self.neutral_joint_values = np.array([0.00, 0.41, 0.00, -1.85, 0.00, 2.26, 0.79, 0.00, 0.00])
+        self.neutral_joint_values = np.array([-0.01379803, -0.4221698, 0.0081434, -2.62930775, 0.00414516, 2.2071252, 0.77655979])
+
         self.sim.set_lateral_friction(self.body_name, self.fingers_indices[0], lateral_friction=1.0)
         self.sim.set_lateral_friction(self.body_name, self.fingers_indices[1], lateral_friction=1.0)
         self.sim.set_spinning_friction(self.body_name, self.fingers_indices[0], spinning_friction=0.001)
@@ -108,6 +118,8 @@ class Panda(PyBulletRobot):
         if self.control_type == "ee":
             ee_displacement = action[:3]
             target_arm_angles = self.ee_displacement_to_target_arm_angles(ee_displacement)
+            # current_arm_joint_angles = np.array([self.get_joint_angle(joint=i) for i in range(7)])
+            # print(current_arm_joint_angles)
         elif self.control_type == "ee_orn":
             ee_displacement = action[:6]
             target_arm_angles = self.ee_displacement_to_target_arm_angles(ee_displacement)
@@ -139,12 +151,14 @@ class Panda(PyBulletRobot):
             # get the current position and the target position
             ee_position = self.get_ee_position()
             target_ee_position = ee_position + ee_displacement
+            # print("target_ee_position:", target_ee_position)
             # Clip the height target. For some reason, it has a great impact on learning
             target_ee_position[2] = np.max((0, target_ee_position[2]))
             # compute the new joint angles
             target_arm_angles = self.inverse_kinematics(
                 link=self.ee_link, position=target_ee_position, orientation=np.array([1.0, 0.0, 0.0, 0.0])
             )
+            # print(target_arm_angles)
             target_arm_angles = target_arm_angles[:7]  # remove fingers angles
         elif self.control_type == "ee_orn":
             ee_displacement = ee_displacement[:3] * 0.05  # limit maximum change in position
@@ -183,12 +197,14 @@ class Panda(PyBulletRobot):
         # end-effector position and velocity
         ee_position = np.array(self.get_ee_position())
         ee_velocity = np.array(self.get_ee_velocity())
+        contact_force = self.get_contact_force()
+
         # fingers opening
         if not self.block_gripper:
             fingers_width = self.get_fingers_width()
-            obs = np.concatenate((ee_position, ee_velocity, [fingers_width]))
+            obs = np.concatenate((ee_position, ee_velocity, [fingers_width], contact_force))
         else:
-            obs = np.concatenate((ee_position, ee_velocity))
+            obs = np.concatenate((ee_position, ee_velocity, contact_force))
         return obs
 
     def reset(self) -> None:
@@ -276,3 +292,20 @@ class Panda(PyBulletRobot):
         quat = [float(qx), float(qy), float(qz), float(qw)]
         pos = [float(p) for p in pos]
         return pos, quat
+    
+    def get_contact_force(self):
+        # get contact force
+        color, depth = self.tactileSensor_ee.render() # update tacto sensor
+   
+        F, delta_max, delta_mean = self.tactileSensor_ee.renderer.estimate_force_from_tacto_depth(depth, 
+                                                                                                d_max = 5e-3, 
+                                                                                                d_min=1e-6, 
+                                                                                                f_offset = 0.0, 
+                                                                                                k = 2000.0
+                                                                                                )
+        # self.tactileSensor_ee.updateGUI(color, depth)
+        F = np.array(list(F.values()), dtype=np.float32)
+        # print(F)
+        # print(f"F_cam0 = {F[0]} Max_cam0 = {delta_max[0]} Mean_cam0 = {delta_mean[0]}")
+        # print(f"F_cam1 = {F[1]} Max_cam1 = {delta_max[1]} Mean_cam1 = {delta_mean[1]}")
+        return F

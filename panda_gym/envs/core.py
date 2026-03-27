@@ -243,40 +243,46 @@ class RobotTaskEnv(gym.GoalEnv):
         observation_shape = obs["observation"].shape
         achieved_goal_shape = obs["achieved_goal"].shape
         desired_goal_shape = obs["achieved_goal"].shape
+        # contact_force_shape = obs["contact_force"].shape
         self.observation_space = gym.spaces.Dict(
             dict(
                 observation=gym.spaces.Box(-10.0, 10.0, shape=observation_shape, dtype=np.float32),
                 desired_goal=gym.spaces.Box(-10.0, 10.0, shape=achieved_goal_shape, dtype=np.float32),
                 achieved_goal=gym.spaces.Box(-10.0, 10.0, shape=desired_goal_shape, dtype=np.float32),
+                # contact_force=gym.spaces.Box(-10,10, shape=contact_force_shape, dtype=np.float32)
             )
         )
         self.action_space = self.robot.action_space
         self.compute_reward = self.task.compute_reward
         # Tacto camera setting
+        # if(self.task.create_flag < 0.5):
         self.robot.tactileSensor_ee.add_body(self.task.obj)
 
     def _get_obs(self) -> Dict[str, np.ndarray]:
         robot_obs = self.robot.get_obs()  # robot state
         task_obs = self.task.get_obs()  # object position, velococity, etc...
-        observation = np.concatenate([robot_obs, task_obs])
+        observation = np.concatenate([robot_obs, task_obs, ])
         achieved_goal = self.task.get_achieved_goal()
+        # contact_force = self.robot.get_contact_force()
         return {
             "observation": observation,
             "achieved_goal": achieved_goal,
             "desired_goal": self.task.get_goal(),
+            # "contact_force": contact_force
         }
     
     def _get_obs_red_goal(self) -> Dict[str, np.ndarray]:
         robot_obs = self.robot.get_obs()  # robot state
         task_obs = self.task.get_obs()    # object position, velocity, etc...
         observation = np.concatenate([robot_obs, task_obs])
-
         achieved_goal = self.task.get_achieved_goal()
+        # contact_force = self.robot.get_contact_force()
 
         return {
             "observation": observation,
             "achieved_goal": achieved_goal,
             "desired_goal": self.task.red_goal,
+            # "contact_force": contact_force
         }
 
     def reset(self) -> Dict[str, np.ndarray]:
@@ -298,24 +304,11 @@ class RobotTaskEnv(gym.GoalEnv):
         self.filtered_action = alpha * action + (1 - alpha) * self.filtered_action
         action_to_apply = self.filtered_action
         self.robot.set_action(action_to_apply)
-        # print(action_to_apply)
         self.sim.step()
 
-        # get contact force
-        color, depth = self.robot.tactileSensor_ee.render() # update tacto sensor
-   
-        F, delta_max, delta_min = self.robot.tactileSensor_ee.renderer.estimate_force_from_tacto_depth(depth, 
-                                                                                                d_max = 5e-3, 
-                                                                                                d_min=1e-6, 
-                                                                                                f_offset = 0.0, 
-                                                                                                k = 2000.0
-                                                                                                )
-        # self.robot.tactileSensor_ee.updateGUI(color, depth)
         gel_matrix = self.robot.tactileSensor_ee.renderer.gel_node.matrix
         gel_pos, gel_orn = self.robot.getPosAndOrnFromMatrix(gel_matrix)
         p.resetBasePositionAndOrientation(self.robot.gel_vis_id, gel_pos, gel_orn)
-        # if any (ef > 0 for ef in F):
-        #     print("Contact force: ", F, delta_max, delta_min)
 
         # get robot joint velocities
         joint_velocities = []
@@ -329,11 +322,9 @@ class RobotTaskEnv(gym.GoalEnv):
         
         if self.task.contact_flag == 0:
             obs = self._get_obs() # obs init need to be resolved
-            # print("flag = 0")
         elif self.task.contact_flag == 1:
             obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
-            # print("flag = 1")
-        # print("reset")
+        # print(obs)
         done = False
 
         info = {
@@ -345,27 +336,16 @@ class RobotTaskEnv(gym.GoalEnv):
         # weights for reward components
         w_ee_distance = 1.0
 
-        # if self.task.contact_flag == 0 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
-        #     self.task.contact_flag = 1
-        #     obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
-        #     # print("flag switch: 0 -> 1")
-        #     # print(obs["desired_goal"])
-        # elif self.task.contact_flag == 1 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
-        #     self.task.contact_flag = 0
-        #     obs = self._get_obs() # change desired goal back to original goal when contact is made
-        #     # print("flag switch: 1 -> 0")
-        #     # print(obs["desired_goal"]) 
-
-        if self.task.contact_flag == 0 and any(ef > 2.5 for ef in F.values()):
+        if self.task.contact_flag == 0 and np.any(obs["observation"][-2:]!=0):
             self.task.contact_flag = 1
             obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
-            # print("flag switch: 0 -> 1")
-            # print(obs["desired_goal"])
+
         elif self.task.contact_flag == 1 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
             self.task.contact_flag = 0
             obs = self._get_obs() # change desired goal back to original goal when contact is made
-            # print("flag switch: 1 -> 0")
-            # print(obs["desired_goal"]) 
+
+        # print(obs["observation"][-2:])
+        # print(obs)
 
         #calculate reward based on contact flag -> switch controller
         if self.task.contact_flag == 0:

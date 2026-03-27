@@ -12,6 +12,8 @@ model = SAC.load('avoid_test', env=env) # use for testing
 
 obs = env.reset()
 for i in range(1000):
+    # print("obs keys:", obs.keys())
+    # print("model obs space:", model.observation_space)
     action, _state = model.predict(obs, deterministic=True)
     obs, reward, done, info = env.step(action)
     env.render()

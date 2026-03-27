@@ -1,6 +1,7 @@
 from typing import Any, Dict, Union
 
 import numpy as np
+import random
 
 import pybulletX as px
 import pybullet as p
@@ -14,7 +15,7 @@ class Reach(Task):
         sim,
         get_ee_position,
         reward_type="sparse",
-        distance_threshold=0.01,# meters
+        distance_threshold=0.03,# meters
         goal_range=0.3,
         contact_flag=0,
     ) -> None:
@@ -24,8 +25,8 @@ class Reach(Task):
         self.get_ee_position = get_ee_position
         self.contact_flag = contact_flag
 
-        self.goal_range_low = np.array([0.18, -goal_range / 2, 0.15])
-        self.goal_range_high = np.array([0.25, goal_range / 2, goal_range - 0.05])
+        self.goal_range_low = np.array([0.0, -goal_range / 2, 0.15])
+        self.goal_range_high = np.array([0.10, goal_range / 2, goal_range - 0.05])
         # self.goal_range_high = np.array([0.05, 0.05, goal_range - 0.05])
 
         with self.sim.no_rendering():
@@ -55,13 +56,17 @@ class Reach(Task):
         #     rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
         # )
 
+        # self.create_flag = random.uniform(0,1)
+        # print(self.create_flag)
+        # if(self.create_flag < 0.5):
         # create a new structure for pybulletx
         self.obj = px.Body(
             urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
-            base_position=[0.15, -0.25, 0.15],
-            base_orientation=[0.0, 0.0, -0.7071, 0.7071],
+            base_position=[-0.10, 0.0, 0.45],
+            base_orientation=[0.5, -0.5, -0.5, 0.5],
             use_fixed_base=True,
-            global_scaling=1.0
+            # use_fixed_base=False,
+            global_scaling= 1.0
         )
 
         self.cid = p.createConstraint(
@@ -77,6 +82,7 @@ class Reach(Task):
             childFrameOrientation=[0, 0, 0, 1]
         )
         p.changeConstraint(self.cid, maxForce=20)
+            
 
         #new goal poaition (red)
         self.sim.create_sphere(
@@ -97,6 +103,8 @@ class Reach(Task):
 
     def reset(self) -> None:
         self.goal = self._sample_goal()
+        # print(self.goal)
+        # self.goal = np.array([-0.20, 0.0, 0.30]) # make goal fixed for testing
         # self.red_goal = self._sample_red_goal()
         self.red_goal = self.goal.copy()
         self.red_goal[0] -= 0.30 # make sure red goal is not
