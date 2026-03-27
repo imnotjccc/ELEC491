@@ -93,6 +93,7 @@ class Sensor:
         self.object_poses = {}
         self.normal_forces = {}
         self._static = None
+        self.pts_cam = {}
 
     @property
     def height(self):
@@ -209,7 +210,7 @@ class Sensor:
         for obj_name in self.objects.keys():
             self.object_poses[obj_name] = self.objects[obj_name].get_pose()
 
-    def get_force(self, cam_name):
+    def get_force_and_pts(self, cam_name):
         # Load contact force
 
         obj_id = self.cameras[cam_name].obj_id
@@ -221,6 +222,7 @@ class Sensor:
 
         # accumulate forces from 0. using defaultdict of float
         self.normal_forces[cam_name] = collections.defaultdict(float)
+        self.pts_cam[cam_name] = []
 
         for pt in pts:
             body_id_b = pt[2]
@@ -234,8 +236,9 @@ class Sensor:
 
             # Accumulate normal forces
             self.normal_forces[cam_name][obj_name] += pt[9]
+            self.pts_cam[cam_name].append(pt)
 
-        return self.normal_forces[cam_name]
+        return self.normal_forces[cam_name], self.pts_cam[cam_name]
 
     @property
     def static(self):
@@ -264,8 +267,8 @@ class Sensor:
         for i in range(self.nb_cam):
             cam_name = "cam" + str(i)
 
-            # get the contact normal forces
-            normal_forces = self.get_force(cam_name)
+            # get the contact normal forces and pts
+            normal_forces, _ = self.get_force_and_pts(cam_name)
 
             if normal_forces:
                 position, orientation = self.cameras[cam_name].get_pose()
@@ -311,3 +314,45 @@ class Sensor:
             cv2.imshow("color", cv2.cvtColor(color, cv2.COLOR_RGB2BGR))
 
         cv2.waitKey(1)
+
+    def get_contact_center_and_normal(self):
+        """
+        根据所有碰撞点法向力大小，返回加权后中心点坐标和法向方向
+        """
+        contact_Center = []
+        contact_normal = []
+
+        for cam_nb in range(self.nb_cam):
+            cam_name = "cam" + str(cam_nb)
+
+            total_force = 0.0
+            weighted_normal = np.zeros(3)
+            weighted_pos = np.zeros(3)
+
+            for pt in self.pts_cam[cam_name]:
+                pos_on_B = np.array(pt[6])   # 接触点位置
+                normal_vec = np.array(pt[7]) # 法向向量
+                force = pt[9]                # 法向力大小 (权重)
+
+                if force <= 0:
+                    continue
+
+                total_force += force
+                weighted_normal += normal_vec * force
+                weighted_pos += pos_on_B * force
+
+            # 如果所有的力加起来为0（比如只是轻微触碰或者穿透但还没产生弹力），跳过查看下一个相机
+            if total_force == 0.0:
+                continue
+
+            # 计算受力加权平均位置 (压力中心 Center of Pressure)
+            center_of_pressure = weighted_pos / total_force
+            contact_Center.append(center_of_pressure)
+
+            # 计算加权平均法向，并将其归一化 (变成长度为1的单位向量)
+            avg_normal = weighted_normal / np.linalg.norm(weighted_normal)
+            contact_normal.append(avg_normal)
+
+        return contact_Center, contact_normal
+
+

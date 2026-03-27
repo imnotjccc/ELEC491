@@ -16,6 +16,36 @@ import time
 
 log = logging.getLogger(__name__)
 
+def draw_contact_point_and_normal(ct_p, ct_n, line_length=0.03, lifeTime=0.1):
+    """
+    绘制碰撞点和对应的法向箭头
+    
+    :param ct_p: 接触点中心坐标
+    :param ct_n: 接触力法向
+    :param line_length: debug箭头长度
+    :param lifeTime: debug箭头存在时间
+    """
+    for i in range(len(ct_p)):
+        # 终点坐标 = 起点 + 法向 * 长度
+        end_pos = ct_p[i] + ct_n[i] * line_length
+        # 画一根粗壮的粉色箭头代表整体法向
+        p.addUserDebugLine(
+            lineFromXYZ=ct_p[i].tolist(), 
+            lineToXYZ=end_pos.tolist(), 
+            lineColorRGB=[1, 0, 1], # 粉紫色，与之前的红色区分开
+            lineWidth=5,            # 画粗一点
+            lifeTime=lifeTime
+        )
+        # 画一个大一点的绿色圆点代表“压力中心”
+        p.addUserDebugLine(
+            lineFromXYZ=ct_p[i].tolist(), 
+            lineToXYZ=(ct_p[i] + np.array([0, 0, 0.001])).tolist(), 
+            lineColorRGB=[0, 1, 0], 
+            lineWidth=8, 
+            lifeTime=lifeTime
+        )
+
+
 def getPosAndOrnFromMatrix(matrix):
     """Extract position and orientation quaternion from a transform matrix.
 
@@ -277,6 +307,8 @@ def main(cfg):
             if F[0] != 0:
                 plotter.update_plot(z_current=abs(y0), f_current=F[0])
                 print(f"y = {y0} f = {F[0]}")
+
+        point, normal = tactileSensor_ee.get_contact_center_and_normal()
 
         color, depth = tactileSensor_ee.render()
         tactileSensor_ee.updateGUI(color, depth)
