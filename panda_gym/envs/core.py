@@ -239,6 +239,10 @@ class RobotTaskEnv(gym.GoalEnv):
         self.robot = robot
         self.task = task
         self.seed()  # required for init; can be changed later
+
+        self.correct_ee_orn = np.zeros(3, dtype=np.float32)  # << set before reset
+        self.current_ee_orn = np.zeros(3, dtype=np.float32)
+
         obs = self.reset()
         observation_shape = obs["observation"].shape
         achieved_goal_shape = obs["achieved_goal"].shape
@@ -254,35 +258,41 @@ class RobotTaskEnv(gym.GoalEnv):
         )
         self.action_space = self.robot.action_space
         self.compute_reward = self.task.compute_reward
+
         # Tacto camera setting
         # if(self.task.create_flag < 0.5):
-        self.robot.tactileSensor_ee.add_body(self.task.obj)
+        # self.robot.tactileSensor_ee.add_body(self.task.obj)
 
     def _get_obs(self) -> Dict[str, np.ndarray]:
         robot_obs = self.robot.get_obs()  # robot state
         task_obs = self.task.get_obs()  # object position, velococity, etc...
-        observation = np.concatenate([robot_obs, task_obs, ])
-        achieved_goal = self.task.get_achieved_goal()
-        # contact_force = self.robot.get_contact_force()
+        observation = np.concatenate([robot_obs, task_obs])
+        # achieved_goal = self.task.get_achieved_goal()
+
+        self.current_ee_orn = np.array(p.getEulerFromQuaternion(self.robot.get_ee_orientation()))
+        achieved_goal = np.concatenate([self.task.get_achieved_goal(), self.current_ee_orn])
+        desired_goal = np.concatenate([self.task.get_goal(), self.correct_ee_orn])
+
         return {
             "observation": observation,
             "achieved_goal": achieved_goal,
-            "desired_goal": self.task.get_goal(),
-            # "contact_force": contact_force
+            "desired_goal": desired_goal,
         }
     
     def _get_obs_red_goal(self) -> Dict[str, np.ndarray]:
         robot_obs = self.robot.get_obs()  # robot state
         task_obs = self.task.get_obs()    # object position, velocity, etc...
         observation = np.concatenate([robot_obs, task_obs])
-        achieved_goal = self.task.get_achieved_goal()
-        # contact_force = self.robot.get_contact_force()
+        # achieved_goal = self.task.get_achieved_goal()
+
+        self.current_ee_orn = np.array(p.getEulerFromQuaternion(self.robot.get_ee_orientation()))
+        achieved_goal = np.concatenate([self.task.get_achieved_goal(), self.current_ee_orn])
+        desired_goal = np.concatenate([self.task.red_goal, self.correct_ee_orn])
 
         return {
             "observation": observation,
             "achieved_goal": achieved_goal,
-            "desired_goal": self.task.red_goal,
-            # "contact_force": contact_force
+            "desired_goal": desired_goal,
         }
 
     def reset(self) -> Dict[str, np.ndarray]:
@@ -328,7 +338,7 @@ class RobotTaskEnv(gym.GoalEnv):
         done = False
 
         info = {
-            "is_success": self.task.is_success(obs["achieved_goal"], self.task.get_goal()),
+            "is_success": self.task.is_success(obs["achieved_goal"][:3], self.task.get_goal()),
             "joint_velocities": joint_velocities,
             "ee_velocity": ee_velocity,
         }
@@ -340,12 +350,21 @@ class RobotTaskEnv(gym.GoalEnv):
             self.task.contact_flag = 1
             obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
 
-        elif self.task.contact_flag == 1 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
+        elif self.task.contact_flag == 1 and distance(obs["achieved_goal"][:3], obs["desired_goal"][:3]) < self.task.distance_threshold:
             self.task.contact_flag = 0
             obs = self._get_obs() # change desired goal back to original goal when contact is made
 
-        # print(obs["observation"][-2:])
-        # print(obs)
+
+        """ check this, for target orientation, 3.27 """
+        # # print("before:", obs["desired_goal"][3:])
+        # if self.task.contact_flag == 0 and self.task.orientation_flag == 0 and distance(obs["achieved_goal"][:3], obs["desired_goal"][:3]) < self.task.distance_threshold:
+        #     self.correct_ee_orn = obs["achieved_goal"][3:]
+        #     self.task.orientation_flag = 1
+        # elif self.task.contact_flag == 0 and self.task.orientation_flag == 0 and distance(obs["achieved_goal"][:3], obs["desired_goal"][:3]) > self.task.distance_threshold:
+        #     self.correct_ee_orn = [0.0, 0.0, 0.0]
+        #     self.task.orientation_flag = 0
+
+        # print("after:", obs["desired_goal"][3:])
 
         #calculate reward based on contact flag -> switch controller
         if self.task.contact_flag == 0:

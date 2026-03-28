@@ -5,11 +5,27 @@ from gym.envs.registration import register
 with open(os.path.join(os.path.dirname(__file__), "version.txt"), "r") as file_handler:
     __version__ = file_handler.read().strip()
 
+# for reward_type in ["sparse", "dense"]:
+#     for control_type in ["ee", "joints", "orn"]:
+#         reward_suffix = "Dense" if reward_type == "dense" else ""
+#         control_suffix = "Joints" if control_type == "joints" else ""
+#         kwargs = {"reward_type": reward_type, "control_type": control_type}
+#         # print(control_type)
+
 for reward_type in ["sparse", "dense"]:
-    for control_type in ["ee", "joints"]:
+    for control_type in ["ee", "joints", "orn"]:
         reward_suffix = "Dense" if reward_type == "dense" else ""
-        control_suffix = "Joints" if control_type == "joints" else ""
+        if control_type == "joints":
+            control_suffix = "Joints"
+            # print("joint")
+        elif control_type == "orn":
+            control_suffix = "Orn"  # Add unique suffix for "orn"
+            # print("orn")
+        else:  # "ee"
+            control_suffix = ""
+            # print("ee")
         kwargs = {"reward_type": reward_type, "control_type": control_type}
+        # print(control_type)
 
         register(
             id="PandaReach{}{}-v2".format(control_suffix, reward_suffix),

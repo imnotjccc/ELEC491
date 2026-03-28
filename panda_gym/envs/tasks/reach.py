@@ -15,18 +15,20 @@ class Reach(Task):
         sim,
         get_ee_position,
         reward_type="sparse",
-        distance_threshold=0.03,# meters
+        distance_threshold=0.07,# meters
         goal_range=0.3,
         contact_flag=0,
+        orientation_flag=0,
     ) -> None:
         super().__init__(sim)
         self.reward_type = reward_type
         self.distance_threshold = distance_threshold
         self.get_ee_position = get_ee_position
         self.contact_flag = contact_flag
+        self.orientation_flag = orientation_flag
 
-        self.goal_range_low = np.array([0.0, -goal_range / 2, 0.15])
-        self.goal_range_high = np.array([0.10, goal_range / 2, goal_range - 0.05])
+        self.goal_range_low = np.array([-0.05, -goal_range / 2, 0.20])
+        self.goal_range_high = np.array([0.10, goal_range / 2, 0.45])
         # self.goal_range_high = np.array([0.05, 0.05, goal_range - 0.05])
 
         with self.sim.no_rendering():
@@ -60,28 +62,28 @@ class Reach(Task):
         # print(self.create_flag)
         # if(self.create_flag < 0.5):
         # create a new structure for pybulletx
-        self.obj = px.Body(
-            urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
-            base_position=[-0.10, 0.0, 0.45],
-            base_orientation=[0.5, -0.5, -0.5, 0.5],
-            use_fixed_base=True,
-            # use_fixed_base=False,
-            global_scaling= 1.0
-        )
+        # self.obj = px.Body(
+        #     urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
+        #     base_position=[-0.10, 0.0, 0.55],
+        #     base_orientation=[0.5, -0.5, -0.5, 0.5],
+        #     use_fixed_base=True,
+        #     # use_fixed_base=False,
+        #     global_scaling= 1.0
+        # )
 
-        self.cid = p.createConstraint(
-            parentBodyUniqueId=self.obj.id,
-            parentLinkIndex=-1,
-            childBodyUniqueId=-1,        # world
-            childLinkIndex=-1,
-            jointType=p.JOINT_FIXED,
-            jointAxis=[0, 0, 0],
-            parentFramePosition=[0, 0, 0],     # 在球的局部坐标：球心
-            childFramePosition=[0.0, 0.0, 0.0],   # 在世界坐标：目标点
-            parentFrameOrientation=[0.0, 0.0, 0.0, 1.0],   # 可选：想锁定姿态就给
-            childFrameOrientation=[0, 0, 0, 1]
-        )
-        p.changeConstraint(self.cid, maxForce=20)
+        # self.cid = p.createConstraint(
+        #     parentBodyUniqueId=self.obj.id,
+        #     parentLinkIndex=-1,
+        #     childBodyUniqueId=-1,        # world
+        #     childLinkIndex=-1,
+        #     jointType=p.JOINT_FIXED,
+        #     jointAxis=[0, 0, 0],
+        #     parentFramePosition=[0, 0, 0],     # 在球的局部坐标：球心
+        #     childFramePosition=[0.0, 0.0, 0.0],   # 在世界坐标：目标点
+        #     parentFrameOrientation=[0.0, 0.0, 0.0, 1.0],   # 可选：想锁定姿态就给
+        #     childFrameOrientation=[0, 0, 0, 1]
+        # )
+        # p.changeConstraint(self.cid, maxForce=20)
             
 
         #new goal poaition (red)
@@ -130,16 +132,79 @@ class Reach(Task):
         d = distance(achieved_goal, desired_goal)
         return np.array(d < self.distance_threshold, dtype=np.float64)
 
-    def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> Union[np.ndarray, float]:
-        # penalty for ee distance to taget
-        d = distance(achieved_goal, desired_goal)
+    # def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> Union[np.ndarray, float]:
+    #     # penalty for ee distance to taget
+    #     d = distance(achieved_goal[:3], desired_goal[:3])
+
+    #     if self.reward_type == "sparse":
+    #         target_penalty = -np.array(d > self.distance_threshold, dtype=np.float64)
+    #     else: # dense reward shaping
+    #         target_penalty = -d
+
+    #         achieved_orn = np.array(achieved_goal[3:], dtype=np.float64)
+    #         desired_orn = np.array(desired_goal[3:], dtype=np.float64)
+
+    #         orn_err = self.angle_wrap(achieved_orn - desired_orn)
+    #         orn_penalty = -np.sum(orn_err ** 2, axis=-1)
+
+    #         reward = target_penalty + 0.5 * orn_penalty
+
+    #     # compute total reward
+    #     reward = target_penalty
+
+    #     return reward
+    
+    def compute_reward(self, achieved_goal, desired_goal, info):
+        achieved_goal = np.asarray(achieved_goal)
+        desired_goal = np.asarray(desired_goal)
+
+        if achieved_goal.ndim == 1:
+            achieved_pos = achieved_goal[:3]
+            achieved_orn = achieved_goal[3:]
+            desired_pos = desired_goal[:3]
+            desired_orn = desired_goal[3:]
+        else:
+            achieved_pos = achieved_goal[:, :3]
+            achieved_orn = achieved_goal[:, 3:]
+            desired_pos = desired_goal[:, :3]
+            desired_orn = desired_goal[:, 3:]
+
+        d = distance(achieved_pos, desired_pos)
 
         if self.reward_type == "sparse":
-            target_penalty = -np.array(d > self.distance_threshold, dtype=np.float64)
-        else: # dense reward shaping
+            reward = -np.array(d > self.distance_threshold, dtype=np.float64)
+        else:
             target_penalty = -d
+            orn_err = self.angle_wrap(achieved_orn - desired_orn)
+            orn_penalty = -np.sum(orn_err ** 2, axis=-1)
+            reward = np.where(
+                d < self.distance_threshold,
+                target_penalty * 10.0 + 0.1 * orn_penalty,
+                target_penalty,
+            )
+        # else:
+        #     target_penalty = -d
+        #     orn_err = self.angle_wrap(achieved_orn - desired_orn)
+        #     orn_penalty = -np.sum(orn_err ** 1, axis=-1)
+        #     reward = target_penalty * 10.0 + 0.01 * orn_penalty
 
-        # compute total reward
-        reward = target_penalty
-
+        if np.isscalar(reward) or np.shape(reward) == ():
+            return float(reward)
         return reward
+        
+    def angle_wrap(self, x: np.ndarray) -> np.ndarray:
+        return (x + np.pi) % (2 * np.pi) - np.pi
+
+    def euler_error(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """
+        Compute wrapped per-axis error between two Euler-angle vectors.
+
+        Args:
+            a: current Euler angles, shape (3,)
+            b: target Euler angles, shape (3,)
+
+        Returns:
+            Wrapped angle error in [-pi, pi], shape (3,)
+        """
+        assert a.shape == b.shape
+        return self.angle_wrap(a - b)

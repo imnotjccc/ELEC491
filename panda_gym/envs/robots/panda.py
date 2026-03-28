@@ -22,19 +22,23 @@ class Panda(PyBulletRobot):
         sim: PyBullet,
         block_gripper: bool = False,
         base_position: np.ndarray = np.array([0.0, 0.0, 0.0]),
-        control_type: str = "ee_orn",
+        control_type: str = "orn",
     ) -> None:
+        # print(control_type)
         self.block_gripper = block_gripper
         self.control_type = control_type
         # n_action = 3 if self.control_type == "ee" else 7  # control (x, y z) if "ee", else, control the 7 joints
         if self.control_type == "ee":
+            # print(3)
             n_action = 3
-        elif self.control_type == "ee_orn":
+        elif self.control_type == "orn":
+            # print(6)
             n_action = 6
         else:
+            # print(7)
             n_action = 7
         # print(self.control_type)
-        # if self.control_type == "ee_orn":
+        # if self.control_type == "orn":
         #     n_action = 6
         # else:
         #     n_action = 7
@@ -120,7 +124,7 @@ class Panda(PyBulletRobot):
             target_arm_angles = self.ee_displacement_to_target_arm_angles(ee_displacement)
             # current_arm_joint_angles = np.array([self.get_joint_angle(joint=i) for i in range(7)])
             # print(current_arm_joint_angles)
-        elif self.control_type == "ee_orn":
+        elif self.control_type == "orn":
             ee_displacement = action[:6]
             target_arm_angles = self.ee_displacement_to_target_arm_angles(ee_displacement)
         else:
@@ -160,17 +164,19 @@ class Panda(PyBulletRobot):
             )
             # print(target_arm_angles)
             target_arm_angles = target_arm_angles[:7]  # remove fingers angles
-        elif self.control_type == "ee_orn":
-            ee_displacement = ee_displacement[:3] * 0.05  # limit maximum change in position
-            ee_orn_ctrl = ee_displacement[3:] * 0.05  # limit maximum change in orientation
+        elif self.control_type == "orn":
+            # ee_displacement = ee_displacement[:3] * 0.05  # limit maximum change in position
+            ee_pos_ctrl = ee_displacement[:3] * 0.05
+            ee_orn_ctrl = ee_displacement[3:] * 0.01  # limit maximum change in orientation
             # get the current position and the target position
             ee_position = self.get_ee_position()
-            target_ee_position = ee_position + ee_displacement[:3]
+            target_ee_position = ee_position + ee_pos_ctrl[:3]
             # Clip the height target. For some reason, it has a great impact on learning
             target_ee_position[2] = np.max((0, target_ee_position[2]))
             # compute the new joint angles
             current_ee_orn = p.getLinkState(self.sim._bodies_idx[self.body_name], self.ee_link)[1]
             target_ee_orn = p.getQuaternionFromEuler(np.array(p.getEulerFromQuaternion(current_ee_orn)) + ee_orn_ctrl)
+            # print("target_ee_position: ", target_ee_position, "target_ee_orn: ", target_ee_orn)
             target_arm_angles = self.inverse_kinematics(
                 link=self.ee_link, position=target_ee_position, orientation=target_ee_orn
             )
@@ -309,3 +315,9 @@ class Panda(PyBulletRobot):
         # print(f"F_cam0 = {F[0]} Max_cam0 = {delta_max[0]} Mean_cam0 = {delta_mean[0]}")
         # print(f"F_cam1 = {F[1]} Max_cam1 = {delta_max[1]} Mean_cam1 = {delta_mean[1]}")
         return F
+
+    # get ee orientation
+    def get_ee_orientation(self):
+        # ee_orn = p.getLinkState(self.sim._bodies_idx[self.body_name], self.ee_link)[1]
+        # print(ee_orn)
+        return p.getLinkState(self.sim._bodies_idx[self.body_name], self.ee_link)[1]
