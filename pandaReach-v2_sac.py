@@ -2,7 +2,7 @@ import gym
 import panda_gym
 from stable_baselines3 import DDPG, TD3, SAC, HerReplayBuffer
 
-env = gym.make("PandaReach-v2")
+env = gym.make("PandaReachOrnDense-v2")
 log_dir = './tensorboard_log/panda_reach_v2_tensorboard/'
 
 # SAC

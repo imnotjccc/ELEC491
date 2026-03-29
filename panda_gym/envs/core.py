@@ -239,51 +239,60 @@ class RobotTaskEnv(gym.GoalEnv):
         self.robot = robot
         self.task = task
         self.seed()  # required for init; can be changed later
+
+        self.correct_ee_orn = np.zeros(3, dtype=np.float32)  # << set before reset
+        self.current_ee_orn = np.zeros(3, dtype=np.float32)
+        self.contact_force = np.zeros(2, dtype=np.float32)
+        self.desired_contact_force = np.zeros(2, dtype=np.float32)
+
         obs = self.reset()
         observation_shape = obs["observation"].shape
         achieved_goal_shape = obs["achieved_goal"].shape
         desired_goal_shape = obs["achieved_goal"].shape
-        # contact_force_shape = obs["contact_force"].shape
         self.observation_space = gym.spaces.Dict(
             dict(
                 observation=gym.spaces.Box(-10.0, 10.0, shape=observation_shape, dtype=np.float32),
                 desired_goal=gym.spaces.Box(-10.0, 10.0, shape=achieved_goal_shape, dtype=np.float32),
                 achieved_goal=gym.spaces.Box(-10.0, 10.0, shape=desired_goal_shape, dtype=np.float32),
-                # contact_force=gym.spaces.Box(-10,10, shape=contact_force_shape, dtype=np.float32)
             )
         )
         self.action_space = self.robot.action_space
         self.compute_reward = self.task.compute_reward
+
         # Tacto camera setting
-        # if(self.task.create_flag < 0.5):
         self.robot.tactileSensor_ee.add_body(self.task.obj)
 
     def _get_obs(self) -> Dict[str, np.ndarray]:
         robot_obs = self.robot.get_obs()  # robot state
         task_obs = self.task.get_obs()  # object position, velococity, etc...
-        observation = np.concatenate([robot_obs, task_obs, ])
-        achieved_goal = self.task.get_achieved_goal()
-        # contact_force = self.robot.get_contact_force()
-        return {
-            "observation": observation,
-            "achieved_goal": achieved_goal,
-            "desired_goal": self.task.get_goal(),
-            # "contact_force": contact_force
-        }
-    
-    def _get_obs_red_goal(self) -> Dict[str, np.ndarray]:
-        robot_obs = self.robot.get_obs()  # robot state
-        task_obs = self.task.get_obs()    # object position, velocity, etc...
         observation = np.concatenate([robot_obs, task_obs])
-        achieved_goal = self.task.get_achieved_goal()
-        # contact_force = self.robot.get_contact_force()
+        self.contact_force = self.robot.get_contact_force()
+
+        self.current_ee_orn = np.array(p.getEulerFromQuaternion(self.robot.get_ee_orientation()))
+        achieved_goal = np.concatenate([self.task.get_achieved_goal(), self.current_ee_orn, self.contact_force])
+        desired_goal = np.concatenate([self.task.get_goal(), self.correct_ee_orn, self.desired_contact_force])
 
         return {
             "observation": observation,
             "achieved_goal": achieved_goal,
-            "desired_goal": self.task.red_goal,
-            # "contact_force": contact_force
+            "desired_goal": desired_goal,
         }
+    
+    # def _get_obs_red_goal(self) -> Dict[str, np.ndarray]:
+    #     robot_obs = self.robot.get_obs()  # robot state
+    #     task_obs = self.task.get_obs()    # object position, velocity, etc...
+    #     observation = np.concatenate([robot_obs, task_obs])
+    #     # achieved_goal = self.task.get_achieved_goal()
+
+    #     self.current_ee_orn = np.array(p.getEulerFromQuaternion(self.robot.get_ee_orientation()))
+    #     achieved_goal = np.concatenate([self.task.get_achieved_goal(), self.current_ee_orn])
+    #     desired_goal = np.concatenate([self.task.red_goal, self.correct_ee_orn])
+
+    #     return {
+    #         "observation": observation,
+    #         "achieved_goal": achieved_goal,
+    #         "desired_goal": desired_goal,
+    #     }
 
     def reset(self) -> Dict[str, np.ndarray]:
         with self.sim.no_rendering():
@@ -300,7 +309,7 @@ class RobotTaskEnv(gym.GoalEnv):
     def step(self, action: np.ndarray) -> Tuple[Dict[str, np.ndarray], float, bool, Dict[str, Any]]:
         # low pass filter for actions
         # print(action)
-        alpha = 0.1
+        alpha = 0.07
         self.filtered_action = alpha * action + (1 - alpha) * self.filtered_action
         action_to_apply = self.filtered_action
         self.robot.set_action(action_to_apply)
@@ -320,38 +329,51 @@ class RobotTaskEnv(gym.GoalEnv):
         ee_velocity = []
         ee_velocity = self.robot.get_link_velocity(self.robot.ee_index[0])
         
-        if self.task.contact_flag == 0:
-            obs = self._get_obs() # obs init need to be resolved
-        elif self.task.contact_flag == 1:
-            obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
+        # if self.task.contact_flag == 0:
+        #     obs = self._get_obs() # obs init need to be resolved
+        # elif self.task.contact_flag == 1:
+        #     obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
         # print(obs)
+
+        obs = self._get_obs() # obs init need to be resolved
         done = False
 
         info = {
-            "is_success": self.task.is_success(obs["achieved_goal"], self.task.get_goal()),
+            "is_success": self.task.is_success(obs["achieved_goal"][:3], self.task.get_goal()),
             "joint_velocities": joint_velocities,
             "ee_velocity": ee_velocity,
+            # "contact_force": self.robot.get_contact_force()
         }
-
+        # print(info["contact_force"].shape)
+        # print(info["contact_force"])
         # weights for reward components
         w_ee_distance = 1.0
 
-        if self.task.contact_flag == 0 and np.any(obs["observation"][-2:]!=0):
-            self.task.contact_flag = 1
-            obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
+        # if self.task.contact_flag == 0 and np.any(obs["observation"][-2:]!=0):
+        #     self.task.contact_flag = 1
+        #     obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
 
-        elif self.task.contact_flag == 1 and distance(obs["achieved_goal"], obs["desired_goal"]) < self.task.distance_threshold:
-            self.task.contact_flag = 0
-            obs = self._get_obs() # change desired goal back to original goal when contact is made
+        # elif self.task.contact_flag == 1 and distance(obs["achieved_goal"][:3], obs["desired_goal"][:3]) < self.task.distance_threshold:
+        #     self.task.contact_flag = 0
+        #     obs = self._get_obs() # change desired goal back to original goal when contact is made
 
-        # print(obs["observation"][-2:])
-        # print(obs)
+        # print("before:", obs["desired_goal"][3:])
+        # if self.task.contact_flag == 0 and self.task.orientation_flag == 0 and distance(obs["achieved_goal"][:3], obs["desired_goal"][:3]) < self.task.distance_threshold:
+        #     self.correct_ee_orn = obs["achieved_goal"][3:]
+        #     self.task.orientation_flag = 1
+        # elif self.task.contact_flag == 0 and self.task.orientation_flag == 1 and distance(obs["achieved_goal"][:3], obs["desired_goal"][:3]) > self.task.distance_threshold:
+        #     # self.correct_ee_orn = [0.0, 0.0, 0.0]
+        #     self.task.orientation_flag = 0
+
+        # print("after:", obs["desired_goal"][3:])
 
         #calculate reward based on contact flag -> switch controller
-        if self.task.contact_flag == 0:
-            reward = self.task.compute_reward(obs["achieved_goal"], obs["desired_goal"], info) * w_ee_distance
-        else:
-            reward = self.task.compute_reward(obs["achieved_goal"], obs["desired_goal"], info) * w_ee_distance
+        # if self.task.contact_flag == 0:
+        #     reward = self.task.compute_reward(obs["achieved_goal"], obs["desired_goal"], info) * w_ee_distance
+        # else:
+        #     reward = self.task.compute_reward(obs["achieved_goal"], obs["desired_goal"], info) * w_ee_distance
+
+        reward = self.task.compute_reward(obs["achieved_goal"], obs["desired_goal"], info) * w_ee_distance
         
         assert isinstance(reward, float)  # needed for pytype cheking
 
