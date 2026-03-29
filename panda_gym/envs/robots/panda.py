@@ -310,7 +310,19 @@ class Panda(PyBulletRobot):
                                                                                                 k = 2000.0
                                                                                                 )
         # self.tactileSensor_ee.updateGUI(color, depth)
-        F = np.array(list(F.values()), dtype=np.float32)
+        # F = np.array(list(F.values()), dtype=np.float32)
+        if isinstance(F, dict):
+            F = np.array(list(F.values()), dtype=np.float32)
+        else:
+            F = np.asarray(F, dtype=np.float32).reshape(-1)
+
+        if F.shape[0] == 0:
+            F = np.zeros(2, dtype=np.float32)
+        elif F.shape[0] == 1:
+            F = np.array([F[0], 0.0], dtype=np.float32)
+        else:
+            F = F[:2]
+
         # print(F)
         # print(f"F_cam0 = {F[0]} Max_cam0 = {delta_max[0]} Mean_cam0 = {delta_mean[0]}")
         # print(f"F_cam1 = {F[1]} Max_cam1 = {delta_max[1]} Mean_cam1 = {delta_mean[1]}")

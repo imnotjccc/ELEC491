@@ -15,7 +15,7 @@ class Reach(Task):
         sim,
         get_ee_position,
         reward_type="sparse",
-        distance_threshold=0.07,# meters
+        distance_threshold=0.03,# meters
         goal_range=0.3,
         contact_flag=0,
         orientation_flag=0,
@@ -27,8 +27,8 @@ class Reach(Task):
         self.contact_flag = contact_flag
         self.orientation_flag = orientation_flag
 
-        self.goal_range_low = np.array([-0.05, -goal_range / 2, 0.20])
-        self.goal_range_high = np.array([0.10, goal_range / 2, 0.45])
+        self.goal_range_low = np.array([-0.10, -goal_range / 2, 0.10])
+        self.goal_range_high = np.array([0.05, goal_range / 2, 0.45])
         # self.goal_range_high = np.array([0.05, 0.05, goal_range - 0.05])
 
         with self.sim.no_rendering():
@@ -62,28 +62,28 @@ class Reach(Task):
         # print(self.create_flag)
         # if(self.create_flag < 0.5):
         # create a new structure for pybulletx
-        # self.obj = px.Body(
-        #     urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
-        #     base_position=[-0.10, 0.0, 0.55],
-        #     base_orientation=[0.5, -0.5, -0.5, 0.5],
-        #     use_fixed_base=True,
-        #     # use_fixed_base=False,
-        #     global_scaling= 1.0
-        # )
+        self.obj = px.Body(
+            urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
+            base_position=[-0.20, 0.0, 0.40],
+            base_orientation=[0.5, -0.5, -0.5, 0.5],
+            use_fixed_base=True,
+            # use_fixed_base=False,
+            global_scaling= 1.0
+        )
 
-        # self.cid = p.createConstraint(
-        #     parentBodyUniqueId=self.obj.id,
-        #     parentLinkIndex=-1,
-        #     childBodyUniqueId=-1,        # world
-        #     childLinkIndex=-1,
-        #     jointType=p.JOINT_FIXED,
-        #     jointAxis=[0, 0, 0],
-        #     parentFramePosition=[0, 0, 0],     # 在球的局部坐标：球心
-        #     childFramePosition=[0.0, 0.0, 0.0],   # 在世界坐标：目标点
-        #     parentFrameOrientation=[0.0, 0.0, 0.0, 1.0],   # 可选：想锁定姿态就给
-        #     childFrameOrientation=[0, 0, 0, 1]
-        # )
-        # p.changeConstraint(self.cid, maxForce=20)
+        self.cid = p.createConstraint(
+            parentBodyUniqueId=self.obj.id,
+            parentLinkIndex=-1,
+            childBodyUniqueId=-1,        # world
+            childLinkIndex=-1,
+            jointType=p.JOINT_FIXED,
+            jointAxis=[0, 0, 0],
+            parentFramePosition=[0, 0, 0],     # 在球的局部坐标：球心
+            childFramePosition=[0.0, 0.0, 0.0],   # 在世界坐标：目标点
+            parentFrameOrientation=[0.0, 0.0, 0.0, 1.0],   # 可选：想锁定姿态就给
+            childFrameOrientation=[0, 0, 0, 1]
+        )
+        p.changeConstraint(self.cid, maxForce=20)
             
 
         #new goal poaition (red)
@@ -160,16 +160,22 @@ class Reach(Task):
 
         if achieved_goal.ndim == 1:
             achieved_pos = achieved_goal[:3]
-            achieved_orn = achieved_goal[3:]
+            achieved_orn = achieved_goal[3:6]
             desired_pos = desired_goal[:3]
-            desired_orn = desired_goal[3:]
+            desired_orn = desired_goal[3:6]
+            contact_force = achieved_goal[6:8]
+            desire_contact_force = desired_goal[6:8]
         else:
             achieved_pos = achieved_goal[:, :3]
-            achieved_orn = achieved_goal[:, 3:]
+            achieved_orn = achieved_goal[:, 3:6]
             desired_pos = desired_goal[:, :3]
-            desired_orn = desired_goal[:, 3:]
+            desired_orn = desired_goal[:, 3:6]
+            contact_force = achieved_goal[:, 6:8]
+            desire_contact_force = desired_goal[:, 6:8]
 
+        # print("contact force:", contact_force)
         d = distance(achieved_pos, desired_pos)
+        contact_penalty = -distance(contact_force, desire_contact_force)
 
         if self.reward_type == "sparse":
             reward = -np.array(d > self.distance_threshold, dtype=np.float64)
@@ -179,14 +185,10 @@ class Reach(Task):
             orn_penalty = -np.sum(orn_err ** 2, axis=-1)
             reward = np.where(
                 d < self.distance_threshold,
-                target_penalty * 10.0 + 0.1 * orn_penalty,
-                target_penalty,
+                target_penalty + orn_penalty * 0.01 + contact_penalty * 0.01, # add contact penalty for both cases
+                target_penalty * 5.0 + contact_penalty * 0.05,
             )
-        # else:
-        #     target_penalty = -d
-        #     orn_err = self.angle_wrap(achieved_orn - desired_orn)
-        #     orn_penalty = -np.sum(orn_err ** 1, axis=-1)
-        #     reward = target_penalty * 10.0 + 0.01 * orn_penalty
+        # print("target_penalty:", target_penalty, "orn_penalty:", orn_penalty, "contact_penalty:", contact_penalty)
 
         if np.isscalar(reward) or np.shape(reward) == ():
             return float(reward)
