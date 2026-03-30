@@ -242,8 +242,10 @@ class RobotTaskEnv(gym.GoalEnv):
 
         self.correct_ee_orn = np.zeros(3, dtype=np.float32)  # << set before reset
         self.current_ee_orn = np.zeros(3, dtype=np.float32)
-        self.contact_force = np.zeros(2, dtype=np.float32)
-        self.desired_contact_force = np.zeros(2, dtype=np.float32)
+        self.contact_force_case = np.zeros(2, dtype=np.float32)
+        self.contact_force_link = np.zeros(12, dtype=np.float32)
+        self.desired_contact_force_case = np.array([2.5, 2.5], dtype=np.float32) # maximum contact force for sensor no larger than 2.5N
+        self.desired_contact_force_link = np.zeros(12, dtype=np.float32) # contact force for other joint should be avoid
 
         obs = self.reset()
         observation_shape = obs["observation"].shape
@@ -266,11 +268,11 @@ class RobotTaskEnv(gym.GoalEnv):
         robot_obs = self.robot.get_obs()  # robot state
         task_obs = self.task.get_obs()  # object position, velococity, etc...
         observation = np.concatenate([robot_obs, task_obs])
-        self.contact_force = self.robot.get_contact_force()
+        self.contact_force_case = self.robot.get_contact_force()
 
         self.current_ee_orn = np.array(p.getEulerFromQuaternion(self.robot.get_ee_orientation()))
-        achieved_goal = np.concatenate([self.task.get_achieved_goal(), self.current_ee_orn, self.contact_force])
-        desired_goal = np.concatenate([self.task.get_goal(), self.correct_ee_orn, self.desired_contact_force])
+        achieved_goal = np.concatenate([self.task.get_achieved_goal(), self.current_ee_orn, self.contact_force_case, self.contact_force_link])
+        desired_goal = np.concatenate([self.task.get_goal(), self.correct_ee_orn, self.desired_contact_force_case, self.desired_contact_force_link])
 
         return {
             "observation": observation,
@@ -337,6 +339,8 @@ class RobotTaskEnv(gym.GoalEnv):
 
         obs = self._get_obs() # obs init need to be resolved
         done = False
+
+        self.robot.get_link_contact_force(self.task.obj)
 
         info = {
             "is_success": self.task.is_success(obs["achieved_goal"][:3], self.task.get_goal()),

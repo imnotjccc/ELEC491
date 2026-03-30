@@ -5,6 +5,7 @@ from panda_gym.envs.core import PyBulletRobot
 from panda_gym.pybullet import PyBullet
 import tacto
 import pybullet as p
+import pybulletX as px
 
 class Panda(PyBulletRobot):
     """Panda robot in PyBullet.
@@ -70,6 +71,7 @@ class Panda(PyBulletRobot):
 
         self.fingers_indices = np.array([9, 10])
 
+        self.link_indices=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
         self.ee_link = 11
 
         # self.neutral_joint_values = np.array([0.00, 0.41, 0.00, -1.85, 0.00, 2.26, 0.79, 0.00, 0.00])
@@ -166,7 +168,7 @@ class Panda(PyBulletRobot):
             target_arm_angles = target_arm_angles[:7]  # remove fingers angles
         elif self.control_type == "orn":
             # ee_displacement = ee_displacement[:3] * 0.05  # limit maximum change in position
-            ee_pos_ctrl = ee_displacement[:3] * 0.05
+            ee_pos_ctrl = ee_displacement[:3] * 0.1
             ee_orn_ctrl = ee_displacement[3:] * 0.01  # limit maximum change in orientation
             # get the current position and the target position
             ee_position = self.get_ee_position()
@@ -333,3 +335,19 @@ class Panda(PyBulletRobot):
         # ee_orn = p.getLinkState(self.sim._bodies_idx[self.body_name], self.ee_link)[1]
         # print(ee_orn)
         return p.getLinkState(self.sim._bodies_idx[self.body_name], self.ee_link)[1]
+    
+    def get_link_contact_force(self, obsticle: px.Body):
+        contact_list = np.zeros((self.link_indices.shape[0],), dtype=np.float32)
+        for i in range(self.link_indices.shape[0]):
+            contact_points = p.getContactPoints(bodyA=self.sim._bodies_idx[self.body_name],
+                                                linkIndexA=self.link_indices[i], 
+                                                bodyB=obsticle.id,
+                                                physicsClientId=self.sim.physics_client._client)
+            contact_list[i] = np.sum([cp[9] for cp in contact_points])  # cp[9] is the normal force
+            # if contact_list[i] > 0:
+            #     body_id_b = contact_points[0][2]
+            #     link_id_b = contact_points[0][4]
+            #     obj_name = "{}_{}".format(body_id_b, link_id_b)
+            #     print(obj_name)
+        # print(contact_list)
+        return contact_list

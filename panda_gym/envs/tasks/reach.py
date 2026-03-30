@@ -27,8 +27,8 @@ class Reach(Task):
         self.contact_flag = contact_flag
         self.orientation_flag = orientation_flag
 
-        self.goal_range_low = np.array([-0.10, -goal_range / 2, 0.10])
-        self.goal_range_high = np.array([0.05, goal_range / 2, 0.45])
+        self.goal_range_low = np.array([0.03, -goal_range / 2, 0.40])
+        self.goal_range_high = np.array([0.13, goal_range / 2, 0.55])
         # self.goal_range_high = np.array([0.05, 0.05, goal_range - 0.05])
 
         with self.sim.no_rendering():
@@ -63,8 +63,9 @@ class Reach(Task):
         # if(self.create_flag < 0.5):
         # create a new structure for pybulletx
         self.obj = px.Body(
-            urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
-            base_position=[-0.20, 0.0, 0.40],
+            # urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
+            urdf_path="tacto/obsticle_cylinder/urdf/obsticle_cylinder.urdf",
+            base_position=[-0.17, 0.0, 0.55],
             base_orientation=[0.5, -0.5, -0.5, 0.5],
             use_fixed_base=True,
             # use_fixed_base=False,
@@ -84,7 +85,7 @@ class Reach(Task):
             childFrameOrientation=[0, 0, 0, 1]
         )
         p.changeConstraint(self.cid, maxForce=20)
-            
+
 
         #new goal poaition (red)
         self.sim.create_sphere(
@@ -129,7 +130,7 @@ class Reach(Task):
         return self.red_goal
 
     def is_success(self, achieved_goal: np.ndarray, desired_goal: np.ndarray) -> Union[np.ndarray, float]:
-        d = distance(achieved_goal, desired_goal)
+        d = distance(achieved_goal[:3], desired_goal[:3])
         return np.array(d < self.distance_threshold, dtype=np.float64)
 
     # def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> Union[np.ndarray, float]:
@@ -163,20 +164,24 @@ class Reach(Task):
             achieved_orn = achieved_goal[3:6]
             desired_pos = desired_goal[:3]
             desired_orn = desired_goal[3:6]
-            contact_force = achieved_goal[6:8]
-            desire_contact_force = desired_goal[6:8]
+            contact_force_case = achieved_goal[6:8]
+            desire_contact_force_case = desired_goal[6:8]
+            contact_force_link = achieved_goal[8:20]
+            desire_contact_force_link = desired_goal[8:20]
         else:
             achieved_pos = achieved_goal[:, :3]
             achieved_orn = achieved_goal[:, 3:6]
             desired_pos = desired_goal[:, :3]
             desired_orn = desired_goal[:, 3:6]
-            contact_force = achieved_goal[:, 6:8]
-            desire_contact_force = desired_goal[:, 6:8]
+            contact_force_case = achieved_goal[:, 6:8]
+            desire_contact_force_case = desired_goal[:, 6:8]
+            contact_force_link = achieved_goal[:, 8:20]
+            desire_contact_force_link = desired_goal[:, 8:20]
 
         # print("contact force:", contact_force)
         d = distance(achieved_pos, desired_pos)
-        contact_penalty = -distance(contact_force, desire_contact_force)
-
+        contact_penalty_case = -distance(contact_force_case, desire_contact_force_case)
+        contact_penalty_link = -distance(contact_force_link, desire_contact_force_link)
         if self.reward_type == "sparse":
             reward = -np.array(d > self.distance_threshold, dtype=np.float64)
         else:
@@ -185,10 +190,9 @@ class Reach(Task):
             orn_penalty = -np.sum(orn_err ** 2, axis=-1)
             reward = np.where(
                 d < self.distance_threshold,
-                target_penalty + orn_penalty * 0.01 + contact_penalty * 0.01, # add contact penalty for both cases
-                target_penalty * 5.0 + contact_penalty * 0.05,
+                target_penalty * 15.0 + orn_penalty * 0.25 + contact_penalty_case * 0.025 + contact_penalty_link * 0.025, # add contact penalty for both cases
+                target_penalty * 15.0 + contact_penalty_case * 0.025 + contact_penalty_link * 0.025,
             )
-        # print("target_penalty:", target_penalty, "orn_penalty:", orn_penalty, "contact_penalty:", contact_penalty)
 
         if np.isscalar(reward) or np.shape(reward) == ():
             return float(reward)
