@@ -17,19 +17,14 @@ class Reach(Task):
         reward_type="sparse",
         distance_threshold=0.03,# meters
         goal_range=0.3,
-        contact_flag=0,
-        orientation_flag=0,
     ) -> None:
         super().__init__(sim)
         self.reward_type = reward_type
         self.distance_threshold = distance_threshold
         self.get_ee_position = get_ee_position
-        self.contact_flag = contact_flag
-        self.orientation_flag = orientation_flag
 
-        self.goal_range_low = np.array([0.03, -goal_range / 2, 0.40])
+        self.goal_range_low = np.array([0.05, -goal_range / 2, 0.40])
         self.goal_range_high = np.array([0.13, goal_range / 2, 0.55])
-        # self.goal_range_high = np.array([0.05, 0.05, goal_range - 0.05])
 
         with self.sim.no_rendering():
             self._create_scene()
@@ -47,25 +42,12 @@ class Reach(Task):
             position=np.zeros(3),
             rgba_color=np.array([0.1, 0.9, 0.1, 0.4]),
         )
-        self.obsticle_name = "screen"
-        # add some obsticles
-        # add a screen
-        # self.sim.create_box(
-        #     body_name=self.obsticle_name,
-        #     half_extents=np.array([0.01, 0.2, 0.2]),
-        #     mass=0.0,
-        #     position=np.zeros(10),
-        #     rgba_color=np.array([0.1, 0.9, 0.1, 0.5]),
-        # )
 
-        # self.create_flag = random.uniform(0,1)
-        # print(self.create_flag)
-        # if(self.create_flag < 0.5):
         # create a new structure for pybulletx
         self.obj = px.Body(
             # urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
-            urdf_path="tacto/obsticle_cylinder/urdf/obsticle_cylinder.urdf",
-            base_position=[-0.17, 0.0, 0.55],
+            urdf_path="tacto/obsticle_cylinder/urdf/Obsticle_cylinder.urdf",
+            base_position=[-0.19, 0.0, 0.57],
             base_orientation=[0.5, -0.5, -0.5, 0.5],
             use_fixed_base=True,
             # use_fixed_base=False,
@@ -86,16 +68,15 @@ class Reach(Task):
         )
         p.changeConstraint(self.cid, maxForce=20)
 
-
         #new goal poaition (red)
-        self.sim.create_sphere(
-            body_name="red_goal",
-            radius=0.02,
-            mass=0.0,
-            ghost=True,
-            position=np.zeros(3),
-            rgba_color=np.array([0.9, 0.1, 0.1, 0.4]),
-        )
+        # self.sim.create_sphere(
+        #     body_name="red_goal",
+        #     radius=0.02,
+        #     mass=0.0,
+        #     ghost=True,
+        #     position=np.zeros(3),
+        #     rgba_color=np.array([0.9, 0.1, 0.1, 0.4]),
+        # )
 
     def get_obs(self) -> np.ndarray:
         return np.array([])  # no task-specific observation
@@ -109,51 +90,33 @@ class Reach(Task):
         # print(self.goal)
         # self.goal = np.array([-0.20, 0.0, 0.30]) # make goal fixed for testing
         # self.red_goal = self._sample_red_goal()
-        self.red_goal = self.goal.copy()
-        self.red_goal[0] -= 0.30 # make sure red goal is not
+        # self.red_goal = self.goal.copy()
+        # self.red_goal[0] -= 0.30 # make sure red goal is not
         # self.screen_pose = self.goal.copy()
         # self.screen_pose[0] -= 0.1
 
-        self.sim.set_base_pose("red_goal", self.red_goal, np.array([0.0, 0.0, 0.0, 1.0]))
+        # self.sim.set_base_pose("red_goal", self.red_goal, np.array([0.0, 0.0, 0.0, 1.0]))
         # self.sim.set_base_pose("screen", self.screen_pose, np.array([0.0, 0.0, 0.0, 1.0]))
         self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0])) # make target the new goal
 
     def _sample_goal(self) -> np.ndarray:
         """Randomize goal."""
-        goal = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
+        if random.randint(0,1) == 1:
+            goal = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
+        else:
+            goal = self.np_random.uniform(np.array([-0.15, -0.15, 0.30]),
+                                        np.array([-0.25, 0.15, 0.55]))
         return goal
     
-    def _sample_red_goal(self) -> np.ndarray:
-        """Randomize second goal."""
-        self.red_goal = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
-        self.red_goal[0] -= 0.10 # make sure red goal is not collide with original goal
-        return self.red_goal
+    # def _sample_red_goal(self) -> np.ndarray:
+    #     """Randomize second goal."""
+    #     self.red_goal = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
+    #     self.red_goal[0] -= 0.10 # make sure red goal is not collide with original goal
+    #     return self.red_goal
 
     def is_success(self, achieved_goal: np.ndarray, desired_goal: np.ndarray) -> Union[np.ndarray, float]:
         d = distance(achieved_goal[:3], desired_goal[:3])
         return np.array(d < self.distance_threshold, dtype=np.float64)
-
-    # def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> Union[np.ndarray, float]:
-    #     # penalty for ee distance to taget
-    #     d = distance(achieved_goal[:3], desired_goal[:3])
-
-    #     if self.reward_type == "sparse":
-    #         target_penalty = -np.array(d > self.distance_threshold, dtype=np.float64)
-    #     else: # dense reward shaping
-    #         target_penalty = -d
-
-    #         achieved_orn = np.array(achieved_goal[3:], dtype=np.float64)
-    #         desired_orn = np.array(desired_goal[3:], dtype=np.float64)
-
-    #         orn_err = self.angle_wrap(achieved_orn - desired_orn)
-    #         orn_penalty = -np.sum(orn_err ** 2, axis=-1)
-
-    #         reward = target_penalty + 0.5 * orn_penalty
-
-    #     # compute total reward
-    #     reward = target_penalty
-
-    #     return reward
     
     def compute_reward(self, achieved_goal, desired_goal, info):
         achieved_goal = np.asarray(achieved_goal)
@@ -161,38 +124,47 @@ class Reach(Task):
 
         if achieved_goal.ndim == 1:
             achieved_pos = achieved_goal[:3]
-            achieved_orn = achieved_goal[3:6]
             desired_pos = desired_goal[:3]
-            desired_orn = desired_goal[3:6]
-            contact_force_case = achieved_goal[6:8]
-            desire_contact_force_case = desired_goal[6:8]
-            contact_force_link = achieved_goal[8:20]
-            desire_contact_force_link = desired_goal[8:20]
         else:
             achieved_pos = achieved_goal[:, :3]
-            achieved_orn = achieved_goal[:, 3:6]
             desired_pos = desired_goal[:, :3]
-            desired_orn = desired_goal[:, 3:6]
-            contact_force_case = achieved_goal[:, 6:8]
-            desire_contact_force_case = desired_goal[:, 6:8]
-            contact_force_link = achieved_goal[:, 8:20]
-            desire_contact_force_link = desired_goal[:, 8:20]
 
-        # print("contact force:", contact_force)
+        new_contact = info["new_contact"]
+        contact_release = info["contact_release"]
+        contact_step = info["contact_step"]
+        joint_velocities = info["joint_velocities:"]
+        # print("joint velocities:", joint_velocities)
         d = distance(achieved_pos, desired_pos)
-        contact_penalty_case = -distance(contact_force_case, desire_contact_force_case)
-        contact_penalty_link = -distance(contact_force_link, desire_contact_force_link)
+
         if self.reward_type == "sparse":
             reward = -np.array(d > self.distance_threshold, dtype=np.float64)
         else:
-            target_penalty = -d
-            orn_err = self.angle_wrap(achieved_orn - desired_orn)
-            orn_penalty = -np.sum(orn_err ** 2, axis=-1)
-            reward = np.where(
+            r_target = -d * 10.0
+            r_new_contact = new_contact * 0.5
+            r_contact_release = contact_release * 0.5
+            r_contact_step = -contact_step * 0.5
+
+            # success bonus
+            r_success = np.where(
                 d < self.distance_threshold,
-                target_penalty * 15.0 + orn_penalty * 0.25 + contact_penalty_case * 0.025 + contact_penalty_link * 0.025, # add contact penalty for both cases
-                target_penalty * 15.0 + contact_penalty_case * 0.025 + contact_penalty_link * 0.025,
+                50.0,
+                0.0
             )
+
+            # penalty for orientation shift after success, encourage the agent to maintain the same orientation as much as possible
+            r_orn_after_success = np.where(
+                (d < self.distance_threshold) & np.any(np.abs(joint_velocities) > 0.01), # if the robot has large joint velocity after reaching the goal, consider it as orientation shift
+                -20.0,
+                0.0
+            )
+
+            # large contact penalty for safety exploring
+            # if np.any(contact_force_case > 2.5): # if contact force is larger than 2.5N, consider it as contact is made
+            #     r_large_contact = -10.0
+            # else:
+            #     r_large_contact = 0.0
+
+            reward = r_target + r_new_contact + r_contact_release + r_contact_step + r_success + r_orn_after_success # + r_large_contact
 
         if np.isscalar(reward) or np.shape(reward) == ():
             return float(reward)

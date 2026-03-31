@@ -5,6 +5,7 @@ import gym
 import gym.spaces
 import gym.utils.seeding
 import numpy as np
+import random
 import pybullet as p
 from panda_gym.utils import distance
 
@@ -29,7 +30,6 @@ class PyBulletRobot(ABC):
         base_position: np.ndarray,
         action_space: gym.spaces.Space,
         joint_indices: np.ndarray,
-        arm_indices: np.ndarray, # define arm indices besides finger joints
         ee_index: np.ndarray,
         joint_forces: np.ndarray,
     ) -> None:
@@ -40,7 +40,6 @@ class PyBulletRobot(ABC):
             self.setup()
         self.action_space = action_space
         self.joint_indices = joint_indices
-        self.arm_indices = arm_indices # define arm indices besides finger joints
         self.ee_index = ee_index
         self.joint_forces = joint_forces
 
@@ -240,22 +239,28 @@ class RobotTaskEnv(gym.GoalEnv):
         self.task = task
         self.seed()  # required for init; can be changed later
 
-        self.correct_ee_orn = np.zeros(3, dtype=np.float32)  # << set before reset
-        self.current_ee_orn = np.zeros(3, dtype=np.float32)
-        self.contact_force_case = np.zeros(2, dtype=np.float32)
-        self.contact_force_link = np.zeros(12, dtype=np.float32)
-        self.desired_contact_force_case = np.array([2.5, 2.5], dtype=np.float32) # maximum contact force for sensor no larger than 2.5N
-        self.desired_contact_force_link = np.zeros(12, dtype=np.float32) # contact force for other joint should be avoid
+        # self.correct_ee_orn = np.zeros(3, dtype=np.float32)  # << set before reset
+        # self.current_ee_orn = np.zeros(3, dtype=np.float32)
+        # self.contact_force_case = np.zeros(2, dtype=np.float32)
+        # self.contact_force_link = np.zeros(12, dtype=np.float32)
+        # self.desired_contact_force_case = np.array([2.5, 2.5], dtype=np.float32) # maximum contact force for sensor no larger than 2.5N
+        # self.desired_contact_force_case = np.zeros(2, dtype=np.float32) # desired contact force for case when no contact is made
+        # self.desired_contact_force_link = np.zeros(12, dtype=np.float32) # contact force for other joint should be avoid
+        self.prev_contact = 0
+        self.new_contact = 0
+        self.contact_release = 0
+        self.contact_step = 0
+        self.joint_velocities = np.zeros(len(self.robot.joint_indices), dtype=np.float32)
 
         obs = self.reset()
         observation_shape = obs["observation"].shape
         achieved_goal_shape = obs["achieved_goal"].shape
-        desired_goal_shape = obs["achieved_goal"].shape
+        desired_goal_shape = obs["desired_goal"].shape
         self.observation_space = gym.spaces.Dict(
             dict(
                 observation=gym.spaces.Box(-10.0, 10.0, shape=observation_shape, dtype=np.float32),
-                desired_goal=gym.spaces.Box(-10.0, 10.0, shape=achieved_goal_shape, dtype=np.float32),
-                achieved_goal=gym.spaces.Box(-10.0, 10.0, shape=desired_goal_shape, dtype=np.float32),
+                desired_goal=gym.spaces.Box(-10.0, 10.0, shape=desired_goal_shape, dtype=np.float32),
+                achieved_goal=gym.spaces.Box(-10.0, 10.0, shape=achieved_goal_shape, dtype=np.float32),
             )
         )
         self.action_space = self.robot.action_space
@@ -270,9 +275,21 @@ class RobotTaskEnv(gym.GoalEnv):
         observation = np.concatenate([robot_obs, task_obs])
         self.contact_force_case = self.robot.get_contact_force()
 
-        self.current_ee_orn = np.array(p.getEulerFromQuaternion(self.robot.get_ee_orientation()))
-        achieved_goal = np.concatenate([self.task.get_achieved_goal(), self.current_ee_orn, self.contact_force_case, self.contact_force_link])
-        desired_goal = np.concatenate([self.task.get_goal(), self.correct_ee_orn, self.desired_contact_force_case, self.desired_contact_force_link])
+        # self.current_ee_orn = np.array(p.getEulerFromQuaternion(self.robot.get_ee_orientation()))
+        # achieved_goal = np.concatenate([self.task.get_achieved_goal(), self.contact_force_case, self.contact_force_link])
+        # desired_goal = np.concatenate([self.task.get_goal(), self.desired_contact_force_case, self.desired_contact_force_link])
+        achieved_goal = np.concatenate([
+                        self.task.get_achieved_goal(),
+                        # np.array([self.new_contact]),
+                        # np.array([self.contact_release]),
+                        # np.array([self.contact_step])
+                    ])
+        desired_goal = np.concatenate([
+                        self.task.get_goal(),
+                        # np.array([self.new_contact]),
+                        # np.array([self.contact_release]),
+                        # np.array([self.contact_step])
+                    ])
 
         return {
             "observation": observation,
@@ -322,36 +339,48 @@ class RobotTaskEnv(gym.GoalEnv):
         p.resetBasePositionAndOrientation(self.robot.gel_vis_id, gel_pos, gel_orn)
 
         # get robot joint velocities
-        joint_velocities = []
-        for joint_idx in self.robot.arm_indices:
-            joint_velocities.append(self.robot.get_joint_velocity(joint_idx))
-        joint_velocities = np.array(joint_velocities)
+        joint_velocities = np.array([self.robot.get_joint_velocity(joint) for joint in self.robot.joint_indices])
+        # print("joint velocities:", joint_velocities)
 
-        #get ee velocity
-        ee_velocity = []
-        ee_velocity = self.robot.get_link_velocity(self.robot.ee_index[0])
+        current_contact = int(np.any(self.contact_force_case > 2.5))
+        if self.prev_contact == 0 and current_contact == 1:
+            self.new_contact = 1
+        else:
+            self.new_contact = 0
         
-        # if self.task.contact_flag == 0:
-        #     obs = self._get_obs() # obs init need to be resolved
-        # elif self.task.contact_flag == 1:
-        #     obs = self._get_obs_red_goal() # change desired goal to red goal when contact is made
-        # print(obs)
+        if self.prev_contact == 1 and current_contact == 0:
+            self.contact_release = 1
+        else:
+            self.contact_release = 0
+
+        if current_contact == 1:
+            self.contact_step += 1
+        else:
+            self.contact_step = 0
+
+        self.prev_contact = current_contact
+
+        # print("current contact:", current_contact, 
+        #       "new contact:", self.new_contact,
+        #       "contact release:", self.contact_release, 
+        #       "contact step:", self.contact_step)
 
         obs = self._get_obs() # obs init need to be resolved
         done = False
 
-        self.robot.get_link_contact_force(self.task.obj)
-
+        # self.robot.get_link_contact_force(self.task.obj)
+        
         info = {
             "is_success": self.task.is_success(obs["achieved_goal"][:3], self.task.get_goal()),
             "joint_velocities": joint_velocities,
-            "ee_velocity": ee_velocity,
+            "new_contact": self.new_contact,
+            "contact_release": self.contact_release,
+            "contact_step": self.contact_step,
+            "joint_velocities:": joint_velocities,
             # "contact_force": self.robot.get_contact_force()
         }
         # print(info["contact_force"].shape)
         # print(info["contact_force"])
-        # weights for reward components
-        w_ee_distance = 1.0
 
         # if self.task.contact_flag == 0 and np.any(obs["observation"][-2:]!=0):
         #     self.task.contact_flag = 1
@@ -377,7 +406,7 @@ class RobotTaskEnv(gym.GoalEnv):
         # else:
         #     reward = self.task.compute_reward(obs["achieved_goal"], obs["desired_goal"], info) * w_ee_distance
 
-        reward = self.task.compute_reward(obs["achieved_goal"], obs["desired_goal"], info) * w_ee_distance
+        reward = self.task.compute_reward(obs["achieved_goal"], obs["desired_goal"], info)
         
         assert isinstance(reward, float)  # needed for pytype cheking
 

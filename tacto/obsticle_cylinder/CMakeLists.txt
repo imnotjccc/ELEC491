@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 
-project(obsticle_cylinder)
+project(Obsticle_cylinder)
 
 find_package(catkin REQUIRED)
 

@@ -3,7 +3,7 @@
     name="model" />
   <param
     name="robot_description"
-    textfile="$(find obsticle_cylinder)/urdf/obsticle_cylinder.urdf" />
+    textfile="$(find Obsticle_cylinder)/urdf/Obsticle_cylinder.urdf" />
   <node
     name="joint_state_publisher_gui"
     pkg="joint_state_publisher_gui"
@@ -16,5 +16,5 @@
     name="rviz"
     pkg="rviz"
     type="rviz"
-    args="-d $(find obsticle_cylinder)/urdf.rviz" />
+    args="-d $(find Obsticle_cylinder)/urdf.rviz" />
 </launch>

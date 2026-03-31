@@ -53,7 +53,6 @@ class Panda(PyBulletRobot):
             base_position=base_position,
             action_space=action_space,
             joint_indices=np.array([0, 1, 2, 3, 4, 5, 6, 9, 10]),
-            arm_indices=np.array([4, 5, 6]), # define arm indices besides finger joints
             ee_index = np.array([11]), # define end-effector link index
             joint_forces=np.array([87.0, 87.0, 87.0, 87.0, 12.0, 120.0, 120.0, 170.0, 170.0]),
         )
@@ -168,8 +167,8 @@ class Panda(PyBulletRobot):
             target_arm_angles = target_arm_angles[:7]  # remove fingers angles
         elif self.control_type == "orn":
             # ee_displacement = ee_displacement[:3] * 0.05  # limit maximum change in position
-            ee_pos_ctrl = ee_displacement[:3] * 0.1
-            ee_orn_ctrl = ee_displacement[3:] * 0.01  # limit maximum change in orientation
+            ee_pos_ctrl = ee_displacement[:3] * 0.08
+            ee_orn_ctrl = ee_displacement[3:] * 0.02  # limit maximum change in orientation
             # get the current position and the target position
             ee_position = self.get_ee_position()
             target_ee_position = ee_position + ee_pos_ctrl[:3]
@@ -235,14 +234,6 @@ class Panda(PyBulletRobot):
     def get_ee_velocity(self) -> np.ndarray:
         """Returns the velocity of the end-effector as (vx, vy, vz)"""
         return self.get_link_velocity(self.ee_link)
-    
-    # add by me
-    def get_joint_velocity(self, joint: int) -> float:
-        """Retuens the velocity of arm joints."""
-        arm_link_vel = []
-        for i in self.arm_indices:
-            arm_link_vel.append(self.sim.get_joint_velocity(self.body_name, i))
-        return np.array(arm_link_vel)
     
     def getPosAndOrnFromMatrix(self, matrix):
         """Extract position and orientation quaternion from a transform matrix.
