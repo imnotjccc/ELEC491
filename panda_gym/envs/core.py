@@ -266,8 +266,9 @@ class RobotTaskEnv(gym.GoalEnv):
         self.action_space = self.robot.action_space
         self.compute_reward = self.task.compute_reward
 
-        # Tacto camera setting
-        self.robot.tactileSensor_ee.add_body(self.task.obj)
+        # # Tacto camera setting
+        if self.task.obj_exist == 1:
+            self.robot.tactileSensor_ee.add_body(self.task.obj)
 
     def _get_obs(self) -> Dict[str, np.ndarray]:
         robot_obs = self.robot.get_obs()  # robot state
@@ -317,18 +318,31 @@ class RobotTaskEnv(gym.GoalEnv):
         with self.sim.no_rendering():
             self.robot.reset()
             self.task.reset()
+            
+            # ----- tacto sync -----
+            # clear previous tracked objects if your tacto sensor supports it
+            if hasattr(self.robot.tactileSensor_ee, "objects"):
+                self.robot.tactileSensor_ee.objects.clear()
+
+            # re-add current obstacle if it exists
+            if getattr(self.task, "obj", None) is not None:
+                self.robot.tactileSensor_ee.add_body(self.task.obj)
 
         # init low pass filter for actions
         if not hasattr(self, "filtered_action") or self.filtered_action is None:
             self.filtered_action = np.zeros(self.robot.action_space.shape, dtype=np.float32)
         else:
             self.filtered_action[:] = 0.0
+        
+        # if self.task.obj != None:
+        #     self.robot.tactileSensor_ee.add_body(self.task.obj)
+
         return self._get_obs()
 
     def step(self, action: np.ndarray) -> Tuple[Dict[str, np.ndarray], float, bool, Dict[str, Any]]:
         # low pass filter for actions
         # print(action)
-        alpha = 0.07
+        alpha = 0.05
         self.filtered_action = alpha * action + (1 - alpha) * self.filtered_action
         action_to_apply = self.filtered_action
         self.robot.set_action(action_to_apply)
@@ -377,7 +391,7 @@ class RobotTaskEnv(gym.GoalEnv):
             "contact_release": self.contact_release,
             "contact_step": self.contact_step,
             "joint_velocities:": joint_velocities,
-            # "contact_force": self.robot.get_contact_force()
+            "contact_force": self.robot.get_contact_force()
         }
         # print(info["contact_force"].shape)
         # print(info["contact_force"])

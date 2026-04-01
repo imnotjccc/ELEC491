@@ -26,6 +26,10 @@ class Reach(Task):
         self.goal_range_low = np.array([0.05, -goal_range / 2, 0.40])
         self.goal_range_high = np.array([0.13, goal_range / 2, 0.55])
 
+        self.obj_exist = 0
+        self.obj = None
+        self.cid = None
+
         with self.sim.no_rendering():
             self._create_scene()
             self.sim.place_visualizer(target_position=np.zeros(3), distance=0.9, yaw=45, pitch=-30)
@@ -43,41 +47,6 @@ class Reach(Task):
             rgba_color=np.array([0.1, 0.9, 0.1, 0.4]),
         )
 
-        # create a new structure for pybulletx
-        self.obj = px.Body(
-            # urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
-            urdf_path="tacto/obsticle_cylinder/urdf/Obsticle_cylinder.urdf",
-            base_position=[-0.19, 0.0, 0.57],
-            base_orientation=[0.5, -0.5, -0.5, 0.5],
-            use_fixed_base=True,
-            # use_fixed_base=False,
-            global_scaling= 1.0
-        )
-
-        self.cid = p.createConstraint(
-            parentBodyUniqueId=self.obj.id,
-            parentLinkIndex=-1,
-            childBodyUniqueId=-1,        # world
-            childLinkIndex=-1,
-            jointType=p.JOINT_FIXED,
-            jointAxis=[0, 0, 0],
-            parentFramePosition=[0, 0, 0],     # 在球的局部坐标：球心
-            childFramePosition=[0.0, 0.0, 0.0],   # 在世界坐标：目标点
-            parentFrameOrientation=[0.0, 0.0, 0.0, 1.0],   # 可选：想锁定姿态就给
-            childFrameOrientation=[0, 0, 0, 1]
-        )
-        p.changeConstraint(self.cid, maxForce=20)
-
-        #new goal poaition (red)
-        # self.sim.create_sphere(
-        #     body_name="red_goal",
-        #     radius=0.02,
-        #     mass=0.0,
-        #     ghost=True,
-        #     position=np.zeros(3),
-        #     rgba_color=np.array([0.9, 0.1, 0.1, 0.4]),
-        # )
-
     def get_obs(self) -> np.ndarray:
         return np.array([])  # no task-specific observation
 
@@ -87,17 +56,41 @@ class Reach(Task):
 
     def reset(self) -> None:
         self.goal = self._sample_goal()
-        # print(self.goal)
-        # self.goal = np.array([-0.20, 0.0, 0.30]) # make goal fixed for testing
-        # self.red_goal = self._sample_red_goal()
-        # self.red_goal = self.goal.copy()
-        # self.red_goal[0] -= 0.30 # make sure red goal is not
-        # self.screen_pose = self.goal.copy()
-        # self.screen_pose[0] -= 0.1
-
-        # self.sim.set_base_pose("red_goal", self.red_goal, np.array([0.0, 0.0, 0.0, 1.0]))
-        # self.sim.set_base_pose("screen", self.screen_pose, np.array([0.0, 0.0, 0.0, 1.0]))
         self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0])) # make target the new goal
+
+        self.obj_exist = random.uniform(0, 1) < 0.8 # 80% chance to have the obstacle
+        if self.obj_exist:
+            if self.obj is None:
+                # create a new structure for pybulletx
+                self.obj = px.Body(
+                    urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
+                    # urdf_path="tacto/obsticle_cylinder/urdf/Obsticle_cylinder.urdf",
+                    base_position=[-0.19, 0.0, 0.57],
+                    base_orientation=[0.5, -0.5, -0.5, 0.5],
+                    use_fixed_base=True,
+                    # use_fixed_base=False,
+                    global_scaling= 1.0
+                )
+
+                self.cid = p.createConstraint(
+                    parentBodyUniqueId=self.obj.id,
+                    parentLinkIndex=-1,
+                    childBodyUniqueId=-1,        # world
+                    childLinkIndex=-1,
+                    jointType=p.JOINT_FIXED,
+                    jointAxis=[0, 0, 0],
+                    parentFramePosition=[0, 0, 0],     # 在球的局部坐标：球心
+                    childFramePosition=[0.0, 0.0, 0.0],   # 在世界坐标：目标点
+                    parentFrameOrientation=[0.0, 0.0, 0.0, 1.0],   # 可选：想锁定姿态就给
+                    childFrameOrientation=[0, 0, 0, 1]
+                )
+                p.changeConstraint(self.cid, maxForce=20)
+        else:
+            if self.obj is not None:
+                p.removeConstraint(self.cid)
+                self.cid = None
+                p.removeBody(self.obj.id)
+                self.obj = None
 
     def _sample_goal(self) -> np.ndarray:
         """Randomize goal."""
@@ -122,18 +115,19 @@ class Reach(Task):
         achieved_goal = np.asarray(achieved_goal)
         desired_goal = np.asarray(desired_goal)
 
-        if achieved_goal.ndim == 1:
-            achieved_pos = achieved_goal[:3]
-            desired_pos = desired_goal[:3]
-        else:
-            achieved_pos = achieved_goal[:, :3]
-            desired_pos = desired_goal[:, :3]
+        # if achieved_goal.ndim == 1:
+        achieved_pos = achieved_goal[:3]
+        desired_pos = desired_goal[:3]
+        # else:
+        #     achieved_pos = achieved_goal[:, :3]
+        #     desired_pos = desired_goal[:, :3]
 
         new_contact = info["new_contact"]
         contact_release = info["contact_release"]
         contact_step = info["contact_step"]
         joint_velocities = info["joint_velocities:"]
-        # print("joint velocities:", joint_velocities)
+        contact_force_case = info["contact_force"]
+
         d = distance(achieved_pos, desired_pos)
 
         if self.reward_type == "sparse":
@@ -160,11 +154,11 @@ class Reach(Task):
 
             # large contact penalty for safety exploring
             # if np.any(contact_force_case > 2.5): # if contact force is larger than 2.5N, consider it as contact is made
-            #     r_large_contact = -10.0
+            #     r_large_contact = -20.0
             # else:
             #     r_large_contact = 0.0
 
-            reward = r_target + r_new_contact + r_contact_release + r_contact_step + r_success + r_orn_after_success # + r_large_contact
+            reward = r_target + r_new_contact + r_contact_release + r_contact_step + r_success + r_orn_after_success #+ r_large_contact
 
         if np.isscalar(reward) or np.shape(reward) == ():
             return float(reward)

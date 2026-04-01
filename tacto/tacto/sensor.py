@@ -43,6 +43,7 @@ class Link:
     cid: int  # physicsClientId
 
     def get_pose(self):
+        # print("Link Getting pose for obj_id {}, cid:{}".format(self.obj_id, self.cid))
         if self.link_id < 0:
             # get the base pose if link ID < 0
             position, orientation = p.getBasePositionAndOrientation(

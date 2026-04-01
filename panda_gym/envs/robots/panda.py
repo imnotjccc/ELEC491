@@ -293,6 +293,7 @@ class Panda(PyBulletRobot):
         return pos, quat
     
     def get_contact_force(self):
+        # print(f"Panda obj_id{self.tactileSensor_ee.objects}") # debug
         # get contact force
         color, depth = self.tactileSensor_ee.render() # update tacto sensor
    
