@@ -148,7 +148,7 @@ class Reach(Task):
             # penalty for orientation shift after success, encourage the agent to maintain the same orientation as much as possible
             r_orn_after_success = np.where(
                 (d < self.distance_threshold) & np.any(np.abs(joint_velocities) > 0.01), # if the robot has large joint velocity after reaching the goal, consider it as orientation shift
-                -20.0,
+                -50.0,
                 0.0
             )
 
