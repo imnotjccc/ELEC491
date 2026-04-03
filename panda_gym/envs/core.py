@@ -391,7 +391,7 @@ class RobotTaskEnv(gym.GoalEnv):
             "contact_release": self.contact_release,
             "contact_step": self.contact_step,
             "joint_velocities:": joint_velocities,
-            "contact_force": self.robot.get_contact_force()
+            # "contact_force": self.robot.get_contact_force()
         }
         # print(info["contact_force"].shape)
         # print(info["contact_force"])

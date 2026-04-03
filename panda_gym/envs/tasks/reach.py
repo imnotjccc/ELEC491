@@ -63,8 +63,8 @@ class Reach(Task):
             if self.obj is None:
                 # create a new structure for pybulletx
                 self.obj = px.Body(
-                    urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
-                    # urdf_path="tacto/obsticle_cylinder/urdf/Obsticle_cylinder.urdf",
+                    # urdf_path="tacto/Obsticle_box/urdf/Obsticle_box.urdf",
+                    urdf_path="tacto/obsticle_cylinder/urdf/Obsticle_cylinder.urdf",
                     base_position=[-0.19, 0.0, 0.57],
                     base_orientation=[0.5, -0.5, -0.5, 0.5],
                     use_fixed_base=True,
@@ -126,7 +126,7 @@ class Reach(Task):
         contact_release = info["contact_release"]
         contact_step = info["contact_step"]
         joint_velocities = info["joint_velocities:"]
-        contact_force_case = info["contact_force"]
+        # contact_force_case = info["contact_force"]
 
         d = distance(achieved_pos, desired_pos)
 
@@ -134,9 +134,9 @@ class Reach(Task):
             reward = -np.array(d > self.distance_threshold, dtype=np.float64)
         else:
             r_target = -d * 10.0
-            r_new_contact = new_contact * 0.5
-            r_contact_release = contact_release * 0.5
-            r_contact_step = -contact_step * 0.5
+            r_new_contact = new_contact
+            r_contact_release = contact_release
+            r_contact_step = -contact_step
 
             # success bonus
             r_success = np.where(
@@ -158,7 +158,7 @@ class Reach(Task):
             # else:
             #     r_large_contact = 0.0
 
-            reward = r_target + r_new_contact + r_contact_release + r_contact_step + r_success + r_orn_after_success #+ r_large_contact
+            reward = r_target + r_new_contact + r_contact_release + r_contact_step + r_success  # + r_orn_after_success + r_large_contact
 
         if np.isscalar(reward) or np.shape(reward) == ():
             return float(reward)

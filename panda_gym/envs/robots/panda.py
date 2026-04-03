@@ -123,8 +123,6 @@ class Panda(PyBulletRobot):
         if self.control_type == "ee":
             ee_displacement = action[:3]
             target_arm_angles = self.ee_displacement_to_target_arm_angles(ee_displacement)
-            # current_arm_joint_angles = np.array([self.get_joint_angle(joint=i) for i in range(7)])
-            # print(current_arm_joint_angles)
         elif self.control_type == "orn":
             ee_displacement = action[:6]
             target_arm_angles = self.ee_displacement_to_target_arm_angles(ee_displacement)
@@ -163,25 +161,47 @@ class Panda(PyBulletRobot):
             target_arm_angles = self.inverse_kinematics(
                 link=self.ee_link, position=target_ee_position, orientation=np.array([1.0, 0.0, 0.0, 0.0])
             )
-            # print(target_arm_angles)
             target_arm_angles = target_arm_angles[:7]  # remove fingers angles
+        # elif self.control_type == "orn":
+        #     # ee_displacement = ee_displacement[:3] * 0.05  # limit maximum change in position
+        #     ee_pos_ctrl = ee_displacement[:3] * 0.08
+        #     ee_orn_ctrl = ee_displacement[3:] * 0.02  # limit maximum change in orientation
+        #     # get the current position and the target position
+        #     ee_position = self.get_ee_position()
+        #     target_ee_position = ee_position + ee_pos_ctrl[:3]
+        #     # Clip the height target. For some reason, it has a great impact on learning
+        #     target_ee_position[2] = np.max((0, target_ee_position[2]))
+        #     # compute the new joint angles
+        #     current_ee_orn = p.getLinkState(self.sim._bodies_idx[self.body_name], self.ee_link)[1]
+        #     target_ee_orn = p.getQuaternionFromEuler(np.array(p.getEulerFromQuaternion(current_ee_orn)) + ee_orn_ctrl)
+        #     # print("target_ee_position: ", target_ee_position, "target_ee_orn: ", target_ee_orn)
+        #     target_arm_angles = self.inverse_kinematics(
+        #         link=self.ee_link, position=target_ee_position, orientation=target_ee_orn
+        #     )
+        #     target_arm_angles = target_arm_angles[:7]  # remove fingers angles
+        
         elif self.control_type == "orn":
-            # ee_displacement = ee_displacement[:3] * 0.05  # limit maximum change in position
-            ee_pos_ctrl = ee_displacement[:3] * 0.08
-            ee_orn_ctrl = ee_displacement[3:] * 0.02  # limit maximum change in orientation
-            # get the current position and the target position
+            ee_pos_ctrl = ee_displacement[:3] * 0.05
+            ee_orn_ctrl = ee_displacement[3:] * 0.02
+
             ee_position = self.get_ee_position()
-            target_ee_position = ee_position + ee_pos_ctrl[:3]
-            # Clip the height target. For some reason, it has a great impact on learning
+            target_ee_position = ee_position + ee_pos_ctrl
             target_ee_position[2] = np.max((0, target_ee_position[2]))
-            # compute the new joint angles
-            current_ee_orn = p.getLinkState(self.sim._bodies_idx[self.body_name], self.ee_link)[1]
-            target_ee_orn = p.getQuaternionFromEuler(np.array(p.getEulerFromQuaternion(current_ee_orn)) + ee_orn_ctrl)
-            # print("target_ee_position: ", target_ee_position, "target_ee_orn: ", target_ee_orn)
+ 
+            current_ee_orn = self.get_ee_orientation()
+            current_euler = np.array(p.getEulerFromQuaternion(current_ee_orn))
+            target_euler = current_euler + ee_orn_ctrl
+            target_euler = (target_euler + np.pi) % (2 * np.pi) - np.pi
+            target_ee_orn = p.getQuaternionFromEuler(target_euler)
+
             target_arm_angles = self.inverse_kinematics(
-                link=self.ee_link, position=target_ee_position, orientation=target_ee_orn
+                link=self.ee_link,
+                position=target_ee_position,
+                orientation=target_ee_orn
             )
-            target_arm_angles = target_arm_angles[:7]  # remove fingers angles
+
+            target_arm_angles = target_arm_angles[:7]
+
         return target_arm_angles
         
 
